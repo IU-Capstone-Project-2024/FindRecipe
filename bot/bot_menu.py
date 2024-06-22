@@ -57,21 +57,35 @@ def create_navigation_buttons(current_day):
     if current_day == -1:
         next_day = InlineKeyboardButton(days[1], callback_data=f"next_{current_day}")
         markup.add(next_day)
+        blacklist = InlineKeyboardButton("Добавить в черный список", callback_data=f"next_{current_day}")
+        markup.add(blacklist)
     elif current_day == 6:
         prev_day = InlineKeyboardButton(days[current_day], callback_data=f"prev_{current_day}")
         markup.add(prev_day)
+        change_breakfast = InlineKeyboardButton("Заменить завтрак", callback_data=f"change_breakfast_{current_day}")
+        change_lunch = InlineKeyboardButton("Заменить обед", callback_data=f"change_lunch_{current_day}")
+        change_dinner = InlineKeyboardButton("Заменить ужин", callback_data=f"change_dinner_{current_day}")
+        change_day = InlineKeyboardButton("Заменить день", callback_data=f"change_day_{current_day}")
+
+        markup.add(change_breakfast)
+        markup.add(change_lunch)
+        markup.add(change_dinner)
+        markup.add(change_day)
     else:
         prev_day = InlineKeyboardButton(days[current_day], callback_data=f"prev_{current_day}")
         next_day = InlineKeyboardButton(days[current_day+2], callback_data=f"next_{current_day}")
         markup.add(prev_day, next_day)
+        change_breakfast = InlineKeyboardButton("Заменить завтрак", callback_data=f"change_breakfast_{current_day}")
+        change_lunch = InlineKeyboardButton("Заменить обед", callback_data=f"change_lunch_{current_day}")
+        change_dinner = InlineKeyboardButton("Заменить ужин", callback_data=f"change_dinner_{current_day}")
+        change_day = InlineKeyboardButton("Заменить день", callback_data=f"change_day_{current_day}")
 
-    change_breakfast = InlineKeyboardButton("Заменить завтрак", callback_data=f"change_breakfast_{current_day}")
-    change_lunch = InlineKeyboardButton("Заменить обед", callback_data=f"change_lunch_{current_day}")
-    change_dinner = InlineKeyboardButton("Заменить ужин", callback_data=f"change_dinner_{current_day}")
-    change_day = InlineKeyboardButton("Заменить день", callback_data=f"change_day_{current_day}")
+        markup.add(change_breakfast)
+        markup.add(change_lunch)
+        markup.add(change_dinner)
+        markup.add(change_day)
 
-    markup.add(change_breakfast, change_lunch, change_dinner)
-    markup.add(change_day)
+
     return markup
 
 
