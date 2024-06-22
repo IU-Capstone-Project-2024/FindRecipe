@@ -3,7 +3,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import json
 
 
-bot = telebot.TeleBot('YOUR_BOT_TOKEN')
+# Replace 'YOUR_BOT_TOKEN' with your actual bot token obtained from BotFather
+bot = telebot.TeleBot('6399232568:AAGD9zt2uvhb0HkTcrrYTPWRr9WkQreY2RY')
 
 blacklist = []
 
@@ -32,7 +33,7 @@ product_status = {product: False for product in products}
 @bot.message_handler(commands=['blacklist'])
 def send_product_list(message, page=0):
     markup = create_product_markup(page)
-    bot.send_message(message.chat.id, "Выберите продукты, чтобы добавить в черный список:", reply_markup=markup)
+    bot.send_message(message.chat.id, "Выберите продукты, чтобы удалить из списка:", reply_markup=markup)
 
 
 def create_product_markup(page):
@@ -41,7 +42,7 @@ def create_product_markup(page):
     end = start + buttons_per_page
 
     for product in products[start:end]:
-        emoji = " 🔴" if product_status[product] else ""
+        emoji = " ✅" if product_status[product] else " 🔴"
         markup.add(InlineKeyboardButton(product + emoji, callback_data=product))
 
     if len(products) > buttons_per_page:
@@ -52,7 +53,7 @@ def create_product_markup(page):
             pagination_buttons.append(InlineKeyboardButton("➡️", callback_data=f"page_{page + 1}"))
         markup.add(*pagination_buttons)
 
-    markup.add(InlineKeyboardButton("Добавить продукты в черный список", callback_data="confirm"))
+    markup.add(InlineKeyboardButton("Обновить черный список", callback_data="confirm"))
 
     return markup
 
@@ -64,10 +65,10 @@ def handle_query(call):
         markup = create_product_markup(page)
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
     elif call.data.startswith("confirm"):
-        selected_products = [product for product, status in product_status.items() if status]
+        selected_products = [product for product, status in product_status.items() if not status]
         if selected_products:
             bot.edit_message_text(
-                f"Добавлены в черный список:\n" + "\n".join(selected_products),
+                f"Обновленный черный список:\n" + "\n".join(selected_products),
                 call.message.chat.id,
                 call.message.message_id
             )
