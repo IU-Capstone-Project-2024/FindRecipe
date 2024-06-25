@@ -1,5 +1,6 @@
 import fastapi
 from pydantic import BaseModel
+from typing import List, Dict
 
 app = fastapi.FastAPI()
 
@@ -10,17 +11,17 @@ class Recipe(BaseModel):
     link_to_image: str
     time: int
     calories: float
-    pfc: list[float]
+    pfc: List[float]
 
 
 class Menu(BaseModel):
-    list_of_products: dict[str, str]
-    menu: list[list[Recipe]]
+    list_of_products: Dict[str, str]
+    menu: List[List[Recipe]]
 
 
-@app.post("/create")
-def get_recipe(bad_products: list[str] = None, calories: float = 2000,
-               pfc: list[float] = None, time: int = 120, replace: list[list[bool]] = None,
+@app.post("/create", response_model=Menu)
+def get_recipe(bad_products: List[str] = None, calories: float = 2000,
+               pfc: List[float] = None, time: int = 120, replace: List[List[bool]] = None,
                diff: int = 5, spicy: int = 0, num_products: int = 25):
     return {
         "list_of_products": {
