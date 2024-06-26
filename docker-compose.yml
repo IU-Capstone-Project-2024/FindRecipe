@@ -1,6 +1,21 @@
 version: "3.7"
 services:
-  fastapi_app:
+  mongo:
+    build:
+      context: MongoDB/.
+    container_name: mongo_db
+    command: mongosh --eval "use findrecipe" --eval  "db.dropDatabase()"
+    expose:
+      - 27017
+
+  mongo_table_creator:
+    build:
+      context: db_creator/.
+    container_name: creator
+    depends_on:
+      - mongo
+
+  app:
     build:
       context: fastapi/.
     container_name: fastapi_app
@@ -8,8 +23,12 @@ services:
       - "8000:8000"
     expose:
       - 8000
+    depends_on:
+      - mongo_table_creator
 
   bot:
     build:
       context: bot/.
-    container_name: bot
+    container_name: bot_app
+    depends_on:
+      - app
