@@ -1,11 +1,11 @@
-FROM okteto/python-fastapi:latest
-#LABEL authors="egor"
+FROM python:3.8
 
-WORKDIR /app
+WORKDIR /fastapi_app
+
+COPY requirements.txt .
+
+RUN pip install -r requirements.txt
 
 COPY . .
 
-EXPOSE 8000
-
-ENTRYPOINT ["top", "-b"]
-
+CMD gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind=0.0.0.0:8000
