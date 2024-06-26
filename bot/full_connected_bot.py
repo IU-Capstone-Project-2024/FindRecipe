@@ -92,7 +92,8 @@ def process_calories_input(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == "time")
 def modify_time(call: types.CallbackQuery):
-    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id, text='Введи время готовки в минутах')
+    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
+                          text='Введи время готовки в минутах')
     bot.register_next_step_handler(call.message, process_time_input)
 
 
@@ -234,11 +235,19 @@ def handle_product(call: CallbackQuery):
 
 def get_user_data(message):
     payload = {
-        "bad_products": [],
+        "bad_products": [
+            "string"
+        ],
         "calories": 2000,
-        "pfc": [],
+        "pfc": [
+            0
+        ],
         "time": 120,
-        "replace": [],
+        "replace": [
+            [
+                True
+            ]
+        ],
         "diff": 5,
         "spicy": 0,
         "num_products": 25
@@ -289,7 +298,7 @@ def create_navigation_buttons(current_day):
         markup.add(change_day)
     else:
         prev_day = InlineKeyboardButton(days[current_day], callback_data=f"prev_{current_day}")
-        next_day = InlineKeyboardButton(days[current_day+2], callback_data=f"next_{current_day}")
+        next_day = InlineKeyboardButton(days[current_day + 2], callback_data=f"next_{current_day}")
         markup.add(prev_day, next_day)
         change_breakfast = InlineKeyboardButton("Заменить завтрак", callback_data=f"change_breakfast_{current_day}")
         change_lunch = InlineKeyboardButton("Заменить обед", callback_data=f"change_lunch_{current_day}")
@@ -300,7 +309,6 @@ def create_navigation_buttons(current_day):
         markup.add(change_lunch)
         markup.add(change_dinner)
         markup.add(change_day)
-
 
     return markup
 
