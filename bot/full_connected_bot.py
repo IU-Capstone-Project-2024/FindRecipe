@@ -316,7 +316,7 @@ def create_navigation_buttons(current_day):
 def get_menu(message):
     payload = get_user_data(message)
     try:
-        response = requests.post(FASTAPI_URL, json=payload)
+        response = requests.post(FASTAPI_URL + "/create", json=payload)
         response.raise_for_status()
         data = response.json()
         shopping_list = data['list_of_products']
@@ -333,7 +333,7 @@ def get_menu(message):
 def navigate_menu(call):
     payload = get_user_data(call)
     try:
-        response = requests.post(FASTAPI_URL, json=payload)
+        response = requests.post(FASTAPI_URL + "/create", json=payload)
         response.raise_for_status()
         data = response.json()
         menu = data['menu']
