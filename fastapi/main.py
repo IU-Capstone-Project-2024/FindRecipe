@@ -1,6 +1,14 @@
 import fastapi
 from pydantic import BaseModel
 from typing import List, Dict
+from pymongo import MongoClient
+import random
+
+MONGO_HOST = 'mongo_db'
+MONGO_PORT = 27017
+MONGO_DB = "findrecipe"
+MONGO_USER = "root"
+MONGO_PASS = "password"
 
 app = fastapi.FastAPI()
 
@@ -23,31 +31,35 @@ class Menu(BaseModel):
 def get_recipe(bad_products: List[str] = None, calories: float = 2000,
                pfc: List[float] = None, time: int = 120, replace: List[List[bool]] = None,
                diff: int = 5, spicy: int = 0, num_products: int = 25):
-    return {
-        "list_of_products": {
-            "prod1": "100g",
-            "prod2": "2 items"
-        },
-        "menu": [[
-            {"name": "test_name1",
-             "link_to_recipe": "link_recipe",
-             "link_to_image": "link_image",
-             "time": 30,
-             "calories": 450.8,
-             "pfc": [8.5, 6.7, 2.9]
-             },
-            {"name": "test_name2",
-             "link_to_recipe": "link_recipe",
-             "link_to_image": "link_image",
-             "time": 23,
-             "calories": 1200.8,
-             "pfc": [4.5, 3.7, 2.9]
-             },
-            {"name": "test_name3",
-             "link_to_recipe": "link_recipe",
-             "link_to_image": "link_image",
-             "time": 17,
-             "calories": 200.3,
-             "pfc": [4.5, 6.7, 1.9]
-             }
-        ] for _ in range(7)]}
+    client = MongoClient(f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
+    db = client['findrecipe']
+
+    response = {
+        "list_of_products": None,
+        "menu": None
+    }
+
+    menu = list()
+    for _ in range(7):
+        menu.append(list())
+        cn = 0
+        for i in random.choices(list(db['recipes'].find()), k=3):
+            cn += 1
+            recipe_for_bot = {
+                "name": i["Name"],
+                "link_to_recipe": i["URL"],
+                "link_to_image": i["Picture URL"],
+                "time": int(i["Cooking time"].split()[0]),
+                "calories": i["Calories"],
+                "pfc": [i["Protein"], i["Fat"], i["Carbs"]]
+            }
+            menu[-1].append(recipe_for_bot)
+            if cn == 3:
+                break
+    response["menu"] = menu
+    response["list_of_products"] = {
+        "prod1": "100g",
+        "prod2": "2 items"
+    }
+
+    return response

@@ -10,4 +10,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD sleep 10 && python3 test_connection_to_mongo.py; gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind=0.0.0.0:8000
+CMD sleep 5 && python3 test_connection_to_mongo.py; gunicorn main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind=0.0.0.0:8000
