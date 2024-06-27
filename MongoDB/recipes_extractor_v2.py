@@ -144,3 +144,21 @@ for recipe_id in range(len(recipe_ingredients)):
 ingredients = pl.read_csv("recipes.csv").replace("Ingredients", pl.Series(recipe_ingredients)).to_pandas().to_csv('recipes.csv', index=False)
 pl.DataFrame({"ID": ids, "Recipe ID": recipe_ids, "Ingredient ID": ingredient_ids, "Weight": weights},
              strict=False).to_pandas().to_csv('weights.csv', index=False)
+
+recipe_time = pl.read_csv("recipes.csv").get_column("Cooking time").to_list()
+time_in_minutes = []
+
+for time in recipe_time:
+    split_time = time.split()
+    hours = 0
+    minutes = 0
+    if time.find('час') != -1 and time.find('минут') != -1:
+        hours = int(split_time[0])
+        minutes = int(split_time[2])
+    elif time.find('час') != -1:
+        hours = int(split_time[0])
+    elif time.find('минут') != -1:
+        minutes = int(split_time[0])
+    time_in_minutes.append(hours * 60 + minutes)
+
+pl.read_csv("recipes.csv").insert_column(3, pl.Series('Cooking time in minutes', time_in_minutes)).to_pandas().to_csv('recipes.csv', index=False)
