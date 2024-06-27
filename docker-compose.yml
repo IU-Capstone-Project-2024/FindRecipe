@@ -4,7 +4,6 @@ services:
     build:
       context: MongoDB/.
     container_name: mongo_db
-    command: mongosh --eval "use findrecipe" --eval  "db.dropDatabase()"
     expose:
       - 27017
 
@@ -12,6 +11,7 @@ services:
     build:
       context: db_creator/.
     container_name: creator
+    restart: "no"
     depends_on:
       - mongo
 
