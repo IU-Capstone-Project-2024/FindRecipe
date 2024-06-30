@@ -33,7 +33,7 @@ product_status = {product: False for product in products}
 
 def send_product_list(message, page=0):
     markup = create_product_markup(page)
-    bot.send_message(message.chat.id, "Выберите продукты, чтобы добавить в черный список:", reply_markup=markup)
+    bot.edit_message_text(chat_id=message.chat.id, message_id=message.id, text="Выберите продукты, чтобы добавить в черный список:", reply_markup=markup)
 
 
 def create_product_markup(page):

@@ -3,18 +3,12 @@ import os
 from dotenv import load_dotenv
 import requests
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-
+from config import bot
 load_dotenv()
-TOKEN = os.getenv('TOKEN')
 
-bot = telebot.TeleBot(TOKEN, parse_mode=None)
-FASTAPI_URL = os.getenv('FASTAPI')
+# FASTAPI_URL = os.getenv('FASTAPI')
 
-
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "Hello, how are you doing?")
-
+FASTAPI_URL = 'https://e287fa0c-34d5-4b30-8665-83491354d016-00-16ru8aa2fe9ch.janeway.replit.dev/docs'
 
 def get_user_data(message):
     payload = {
@@ -89,7 +83,6 @@ def create_navigation_buttons(current_day):
     return markup
 
 
-@bot.message_handler(commands=['menu'])
 def get_menu(message):
     payload = get_user_data(message)
     try:
@@ -100,10 +93,10 @@ def get_menu(message):
         current_day = -1  # if day is -1, then we show shopping list
         shopping_list_text = format_shop_list(shopping_list)
         markup = create_navigation_buttons(current_day)
-        bot.send_message(message.chat.id, shopping_list_text, reply_markup=markup)
+        bot.edit_message_text(chat_id=message.chat.id, message_id=message.id, text=shopping_list_text, reply_markup=markup)
 
     except requests.exceptions.RequestException as e:
-        bot.reply_to(message, f"Failed to retrieve menu: {e}")
+        bot.edit_message_text(chat_id=message.chat.id, message_id=message.id, text="Failed to retrieve menu: {e}")
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(('prev_', 'next_')))

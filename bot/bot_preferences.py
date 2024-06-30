@@ -1,8 +1,11 @@
 from config import bot
-from bot_blacklist import send_product_list
+from blacklist_del import send_product_list
+import bot_menu
 import telebot
 from telebot import types
 
+
+user_data = {}
 def choose_param(message):
     txt = 'Выбери параметр, чтобы изменить его'
     markup = types.InlineKeyboardMarkup()
@@ -28,10 +31,10 @@ def modify_products(call: types.CallbackQuery):
                           text='Enter a number - list of products')
     bot.register_next_step_handler(call.message, process_products_input)
 
-def process_products_input(message):
-    products = message.text
-    user_data['products'] = products
-    choose_param(message)
+# def process_products_input(message):
+#     products = message.text
+#     user_data['products'] = products
+#     choose_param(message)
 
 @bot.callback_query_handler(func=lambda call: call.data == "calories")
 def modify_calories(call: types.CallbackQuery):
@@ -60,11 +63,11 @@ def modify_spicy(call: types.CallbackQuery):
                           text='Введи число - степень остроты от 1 до 5')
     bot.register_next_step_handler(call.message, process_time_input)
 
-def process_spicy_input(message):
-    spicy = message.text
-    user_data['spicy'] = spicy
-    choose_param(message)
-
+# def process_spicy_input(message):
+#     spicy = message.text
+#     user_data['spicy'] = spicy
+#     choose_param(message)
+#
 
 @bot.callback_query_handler(func=lambda call: call.data == "complexity")
 def modify_complexity(call: types.CallbackQuery):
@@ -72,14 +75,15 @@ def modify_complexity(call: types.CallbackQuery):
                           text='Введи число - сложность блюда от 1 до 5')
     bot.register_next_step_handler(call.message, process_time_input)
 
-def process_complexity_input(message):
-    complexity = message.text
-    user_data['complexity'] = complexity
-    choose_param(message)
+# def process_complexity_input(message):
+#     complexity = message.text
+#     user_data['complexity'] = complexity
+#     choose_param(message)
 
 @bot.callback_query_handler(func=lambda call: call.data == "blacklist")
 def modify_blacklist(call: types.CallbackQuery):
     send_product_list(call.message)
 
+@bot.callback_query_handler(func=lambda call: call.data == 'generate')
 def generate(message):
-    pass
+    bot_menu.get_menu(message)

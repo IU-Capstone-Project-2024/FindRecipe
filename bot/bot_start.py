@@ -32,7 +32,7 @@ def main_page(message, text):
 def start_generating(message):
     global user_data
     user_data = dict()
-    preferences.choose_param(message)
+    bot_preferences.choose_param(message)
 
 
 
