@@ -27,6 +27,19 @@ class Menu(BaseModel):
     menu: List[List[Recipe]]
 
 
+def string_to_list_int(s):  # "[2 4   5 3434]" -> [2, 4, 5, 3434]
+    return list(map(int, s[1:len(s) - 1].split()))
+
+
+def string_to_list_float(s):
+    return list(map(float, s[1:len(s) - 1].split()))
+
+
+def string_to_list_string(s):
+    s = s.replace("\n", "")
+    return s[2:len(s) - 2].split("' '")
+
+
 @app.post("/create", response_model=Menu)
 def get_recipe(bad_products: List[str] = None, calories: float = 2000,
                pfc: List[float] = None, time: int = 120, replace: List[List[bool]] = None,
@@ -36,16 +49,6 @@ def get_recipe(bad_products: List[str] = None, calories: float = 2000,
 
     def find_ids_of_products(products_names: List[str]):
         return list(i['ID'] for i in db['ingredients'].find({"Ingredients": {"$in": products_names}}))
-
-    def string_to_list_int(s):  # "[2 4   5 3434]" -> [2, 4, 5, 3434]
-        return list(map(int, s[1:len(s) - 1].split()))
-
-    def string_to_list_float(s):
-        return list(map(float, s[1:len(s) - 1].split()))
-
-    def string_to_list_string(s):
-        s = s.replace("\n", "")
-        return s[2:len(s) - 2].split("' '")
 
     client = MongoClient(f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
     db = client['findrecipe']
@@ -62,8 +65,9 @@ def get_recipe(bad_products: List[str] = None, calories: float = 2000,
     }
 
     recipes = list(db['recipes'].find(filter_for_query))
-    recipes = list(filter(lambda x: not any([(i in bad_products) for i in find_names_of_products(string_to_list_int(x["Ingredients"]))]),
-                          recipes))
+    recipes = list(filter(
+        lambda x: not any([(i in bad_products) for i in find_names_of_products(string_to_list_int(x["Ingredients"]))]),
+        recipes))
     list_of_products = {}
     menu = list()
     for _ in range(7):
@@ -73,8 +77,8 @@ def get_recipe(bad_products: List[str] = None, calories: float = 2000,
             cn += 1
             recipe_for_bot = {
                 # "name": str(find_names_of_products(string_to_list_int(i["Ingredients"]))) ,
-                # "name": str(i) + str(find_names_of_products(string_to_list_int(i["Ingredients"]))),
-                "name": i["Name"],
+                "name": str(i) + str(find_names_of_products(string_to_list_int(i["Ingredients"]))),
+                # "name": i["Name"],
                 "link_to_recipe": i["URL"],
                 "link_to_image": i["Picture URL"],
                 "time": i["Cooking time in minutes"],
@@ -98,15 +102,16 @@ def get_recipe(bad_products: List[str] = None, calories: float = 2000,
 
 
 @app.get("/user", response_model=str)
-def get_recipe(chat_id: str, mess_id: str):
+def get_user(chat_id: str, mess_id: str):
     client = MongoClient(f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
     return client['findrecipe']["users"].find_one({"chat_id": chat_id, "mess_id": mess_id})["data"]
 
 
 @app.post("/user", response_model=str)
-def get_recipe(chat_id: str, mess_id: str, data: str):
+def send_user(chat_id: str, mess_id: str, data: str):
     try:
-        client = MongoClient(f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
+        client = MongoClient(
+            f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
         db = client['findrecipe']
         db['users'].insert_one({"chat_id": chat_id, "mess_id": mess_id, "data": data})
         return "OK"
