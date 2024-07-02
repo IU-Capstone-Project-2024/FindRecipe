@@ -320,7 +320,7 @@ def get_menu(message):
     global global_menu, global_shopping_list
     payload = get_user_data(message)
     try:
-        response = requests.post(FASTAPI_URL, json=payload)
+        response = requests.post(FASTAPI_URL + "/create", json=payload)
         response.raise_for_status()
         data = response.json()
         shopping_list = data['list_of_products']
