@@ -275,6 +275,8 @@ def format_shop_list(shopping_list):
         shopping_list_text += f"- {product}: {quantity}\n"
     return shopping_list_text
 
+global_menu = None
+global_shopping_list = None
 
 def create_navigation_buttons(current_day):
     days = ['Список покупок', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
@@ -298,7 +300,7 @@ def create_navigation_buttons(current_day):
         markup.add(change_day)
     else:
         prev_day = InlineKeyboardButton(days[current_day], callback_data=f"prev_{current_day}")
-        next_day = InlineKeyboardButton(days[current_day + 2], callback_data=f"next_{current_day}")
+        next_day = InlineKeyboardButton(days[current_day+2], callback_data=f"next_{current_day}")
         markup.add(prev_day, next_day)
         change_breakfast = InlineKeyboardButton("Заменить завтрак", callback_data=f"change_breakfast_{current_day}")
         change_lunch = InlineKeyboardButton("Заменить обед", callback_data=f"change_lunch_{current_day}")
@@ -310,18 +312,23 @@ def create_navigation_buttons(current_day):
         markup.add(change_dinner)
         markup.add(change_day)
 
+
     return markup
 
 
 def get_menu(message):
+    global global_menu, global_shopping_list
     payload = get_user_data(message)
     try:
-        response = requests.post(FASTAPI_URL + "/create", json=payload)
+        response = requests.post(FASTAPI_URL, json=payload)
         response.raise_for_status()
         data = response.json()
         shopping_list = data['list_of_products']
         current_day = -1  # if day is -1, then we show shopping list
         shopping_list_text = format_shop_list(shopping_list)
+        menu = data['menu']
+        global_menu = menu
+        global_shopping_list = shopping_list_text
         markup = create_navigation_buttons(current_day)
         bot.send_message(message.chat.id, shopping_list_text, reply_markup=markup)
 
@@ -331,15 +338,12 @@ def get_menu(message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(('prev_', 'next_', 'list_')))
 def navigate_menu(call):
+    global global_menu, global_shopping_list
     payload = get_user_data(call)
     try:
-        response = requests.post(FASTAPI_URL + "/create", json=payload)
-        response.raise_for_status()
-        data = response.json()
-        menu = data['menu']
-        shopping_list = data['list_of_products']
         current_day = int(call.data.split('_')[1])
-
+        menu = global_menu
+        shopping_list = global_shopping_list
         if 'prev' in call.data and current_day > -1:
             current_day -= 1
         elif 'next' in call.data and current_day < len(menu) - 1:
@@ -358,6 +362,7 @@ def navigate_menu(call):
 
     except requests.exceptions.RequestException as e:
         bot.reply_to(call.message, f"Failed to retrieve menu: {e}")
+
 
 
 bot.infinity_polling()
