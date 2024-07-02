@@ -115,6 +115,8 @@ dead = False
 recipe_id = 189999
 while recipe_id < 220000:
     recipe_id += 1
+    if recipe_id % 100 == 0:
+        print(f"Parsing recipes {recipe_id}-{recipe_id + 100}")
     if dead:
         recipe_id -= 1
         print("Going to sleep...")
