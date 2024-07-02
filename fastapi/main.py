@@ -41,9 +41,9 @@ def string_to_list_string(s):
 
 
 @app.post("/create", response_model=Menu)
-def get_recipe(bad_products: List[str] = None, calories: float = 2000,
-               pfc: List[float] = None, time: int = 120, replace: List[List[bool]] = None,
-               diff: int = 5, spicy: int = 2, num_products: int = 25):
+def get_menu(bad_products: List[str] = None, calories: float = 2000,
+             pfc: List[float] = None, time: int = 120, replace: List[List[bool]] = None,
+             diff: int = 5, spicy: int = 2, num_products: int = 25):
     def find_names_of_products(products_ids: List[int]):
         return list(i['Ingredients'] for i in db['ingredients'].find({"ID": {"$in": products_ids}}))
 
@@ -114,6 +114,24 @@ def send_user(chat_id: str, mess_id: str, data: str):
             f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
         db = client['findrecipe']
         db['users'].insert_one({"chat_id": chat_id, "mess_id": mess_id, "data": data})
+        return "OK"
+    except Exception:
+        return "FAILED"
+
+
+@app.get("/chs", response_model=str)
+def get_chs(chat_id: str):
+    client = MongoClient(f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
+    return client['findrecipe']["chs"].find_one({"chat_id": chat_id})["data"]
+
+
+@app.post("/chs", response_model=str)
+def send_chs(chat_id: str, data: str):
+    try:
+        client = MongoClient(
+            f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
+        db = client['findrecipe']
+        db['chs'].insert_one({"chat_id": chat_id, "data": data})
         return "OK"
     except Exception:
         return "FAILED"
