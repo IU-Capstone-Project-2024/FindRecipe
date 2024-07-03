@@ -32,12 +32,12 @@ def string_to_list_int(s):  # "[2 4   5 3434]" -> [2, 4, 5, 3434]
 
 
 def string_to_list_float(s):
-    return list(map(float, s[1:len(s) - 1].split()))
+    return list(map(float, s[1:len(s) - 1].split(", ")))
 
 
 def string_to_list_string(s):
     s = s.replace("\n", "")
-    return s[2:len(s) - 2].split("' '")
+    return s[2:len(s) - 2].split("', '")
 
 
 @app.post("/create", response_model=Menu)
@@ -135,3 +135,12 @@ def send_chs(chat_id: str, data: str):
         return "OK"
     except Exception:
         return "FAILED"
+
+# {'_id': ObjectId('66852e3e82d561d774654c7d'), 'ID': 191, 'Name':
+# 'Быстрые маринованные вешенки', 'Breakfast': 0, 'Cooking time in minutes': 160,
+# 'Cooking time': '2 часа 40 минут', 'Serving type': 'Порции', 'Servings': 3,
+# 'Calories': 37.62, 'Protein': 0.66, 'Fat': 2.38, 'Carbs': 3.59, 'Difficulty': 2,
+# 'Spicy': 2, 'Ingredients': '[ 62  54 408 390 337 314 488 205 485 180]',
+# 'Types': "['г', 'г', 'г', 'г', 'г', 'г', 'г', 'г', 'г', 'по желанию']",
+# 'Weights': '[1000.0, 350.0, 30.0, 30.0, 25.0, 34.0, 10.0, 1.0, 3.0, 0]',
+# 'URL': 'https://food.ru/recipes/190204'
