@@ -59,40 +59,81 @@ def get_menu(bad_products: List[str] = None, calories: float = 2000,
     }
 
     filter_for_query = {
-        "Cooking time in minutes": {"$gte": time},
+        "Cooking time in minutes": {"$lte": time},
         "Difficulty": {"$lte": diff},
-        "Spicy": {"$gte": spicy}
+        "Spicy": {"$lte": spicy}
     }
 
     recipes = list(db['recipes'].find(filter_for_query))
     recipes = list(filter(
         lambda x: not any([(i in bad_products) for i in find_names_of_products(string_to_list_int(x["Ingredients"]))]),
         recipes))
+
+    for recipe in recipes:
+        recipe["recipeCalories"] = sum(string_to_list_float(recipe["Weights"])) / 100 * recipe["Calories"] / recipe["Servings"]
+
+    z = 0.25 * calories
+    o = 0.4 * calories
+    u = 0.35 * calories
+
+    recipes_z = list(filter(lambda x: x["Breakfast"] == 1, recipes))
+    recipes_ou = list(filter(lambda x: x["Breakfast"] == 0, recipes))
+
+    menu = [[z, o, u] for _ in range(7)]
+
+    for i in range(7):
+        m = 10000000000000
+        r = None
+        for j in recipes_z:
+            if abs(j["recipeCalories"] - menu[i][0]) < m:
+                m = abs(j["recipeCalories"] - menu[i][0])
+                r = j
+        if not r:
+            raise Exception(f"can not find zavtrak #{i}")
+        recipes_z.remove(r)
+        menu[i][0] = r
+        m = 10000000000000
+        r = None
+        for j in recipes_ou:
+            if abs(j["recipeCalories"] - menu[i][1]) < m:
+                m = abs(j["recipeCalories"] - menu[i][1])
+                r = j
+        if not r:
+            raise Exception(f"can not find obed #{i}")
+        recipes_ou.remove(r)
+        menu[i][1] = r
+        m = 10000000000000
+        r = None
+        for j in recipes_ou:
+            if abs(j["recipeCalories"] - menu[i][2]) < m:
+                m = abs(j["recipeCalories"] - menu[i][2])
+                r = j
+        if not r:
+            raise Exception(f"can not find obed #{i}")
+        recipes_ou.remove(r)
+        menu[i][2] = r
+
     list_of_products = {}
-    menu = list()
-    for _ in range(7):
-        menu.append(list())
-        cn = 0
-        for i in random.sample(recipes, 3):
-            cn += 1
+    for ind in range(7):
+        for i in range(3):
             recipe_for_bot = {
                 # "name": str(find_names_of_products(string_to_list_int(i["Ingredients"]))) ,
-                "name": str(i) + str(find_names_of_products(string_to_list_int(i["Ingredients"]))),
-                # "name": i["Name"],
-                "link_to_recipe": i["URL"],
-                "link_to_image": i["Picture URL"],
-                "time": i["Cooking time in minutes"],
-                "calories": i["Calories"],
-                "pfc": [i["Protein"], i["Fat"], i["Carbs"]]
+                # "name": str(menu[ind][i]) + "\n\n" + str(find_names_of_products(string_to_list_int(menu[ind][i]["Ingredients"]))),
+                # "name": menu[ind][i]["Name"],
+                "name": menu[ind][i]["Name"],
+                "link_to_recipe": menu[ind][i]["URL"],
+                "link_to_image": menu[ind][i]["Picture URL"],
+                "time": menu[ind][i]["Cooking time in minutes"],
+                "calories": menu[ind][i]["Calories"],
+                "pfc": [menu[ind][i]["Protein"], menu[ind][i]["Fat"], menu[ind][i]["Carbs"]]
             }
-            menu[-1].append(recipe_for_bot)
+            recipe = menu[ind][i]
+            menu[ind][i] = recipe_for_bot
 
-            lp = find_names_of_products(string_to_list_int(i["Ingredients"]))
+            lp = find_names_of_products(string_to_list_int(recipe["Ingredients"]))
             for prod in range(len(lp)):
                 list_of_products[lp[prod]] = list_of_products.get(lp[prod], list()) + [
-                    string_to_list_float(i["Weights"])[prod]]
-            if cn == 3:
-                break
+                    string_to_list_float(recipe["Weights"])[prod]]
     response["menu"] = menu
     for i in list_of_products:
         list_of_products[i] = str((sum(list_of_products[i]), len(list_of_products[i])))
