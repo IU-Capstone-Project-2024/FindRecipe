@@ -46,23 +46,27 @@ def start_generating(message):
     choose_param(message)
 
 
-def choose_param(message):
+def choose_param(message, option=None):
     txt = 'Выбери параметр, чтобы изменить его'
-    markup = types.InlineKeyboardMarkup()
-    calories = types.InlineKeyboardButton('калорийность', callback_data='calories')
-    time = types.InlineKeyboardButton('время готовки', callback_data='time')
-    products = types.InlineKeyboardButton('количество продуктов', callback_data='products')
-    spicy = types.InlineKeyboardButton('острота', callback_data='spicy')
-    complexity = types.InlineKeyboardButton('сложноть', callback_data='complexity')
-    blacklist = types.InlineKeyboardButton('черный список', callback_data='blacklist')
-    generate = types.InlineKeyboardButton('составить меню', callback_data='generate')
+    markup = InlineKeyboardMarkup()
+    calories = InlineKeyboardButton('калорийность', callback_data='calories')
+    time = InlineKeyboardButton('время готовки', callback_data='time')
+    products = InlineKeyboardButton('количество продуктов', callback_data='products')
+    spicy = InlineKeyboardButton('острота', callback_data='spicy')
+    complexity = InlineKeyboardButton('сложноть', callback_data='complexity')
+    blacklist = InlineKeyboardButton('черный список', callback_data='blacklist')
+    generate = InlineKeyboardButton('составить меню', callback_data='generate')
     markup.add(generate)
     markup.row(calories, time)
     markup.row(spicy, complexity)
     markup.add(products)
 
     markup.add(blacklist)
-    bot.send_message(message.chat.id, txt, parse_mode='html', reply_markup=markup)
+    if option:
+        bot.edit_message_text(chat_id=message.chat.id, message_id=message.message_id, text=txt,
+                              reply_markup=markup)
+    else:
+        bot.send_message(message.chat.id, txt, parse_mode='html', reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "products")
@@ -132,11 +136,6 @@ def process_complexity_input(message):
 @bot.callback_query_handler(func=lambda call: call.data == "blacklist")
 def modify_blacklist(call: types.CallbackQuery):
     send_product_list(call.message)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == "generate")
-def generate(call: types.CallbackQuery):
-    get_menu(call.message)
 
 
 ### Sofia
@@ -275,75 +274,103 @@ def format_shop_list(shopping_list):
         shopping_list_text += f"- {product}: {quantity}\n"
     return shopping_list_text
 
-global_menu = None
-global_shopping_list = None
 
-def create_navigation_buttons(current_day):
+def create_navigation_buttons(current_day, mess_id):
     days = ['Список покупок', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
     markup = InlineKeyboardMarkup()
+
     if current_day == -1:
-        next_day = InlineKeyboardButton(days[1], callback_data=f"next_{current_day}")
+        next_day = InlineKeyboardButton(days[1], callback_data=f"next_{current_day}_{mess_id}")
         markup.add(next_day)
-        blacklist = InlineKeyboardButton("Добавить в черный список", callback_data=f"list_{current_day}")
+        blacklist = InlineKeyboardButton("Добавить в черный список", callback_data=f"list_{current_day}_{mess_id}")
         markup.add(blacklist)
     elif current_day == 6:
-        prev_day = InlineKeyboardButton(days[current_day], callback_data=f"prev_{current_day}")
+        prev_day = InlineKeyboardButton(days[current_day], callback_data=f"prev_{current_day}_{mess_id}")
         markup.add(prev_day)
-        change_breakfast = InlineKeyboardButton("Заменить завтрак", callback_data=f"change_breakfast_{current_day}")
-        change_lunch = InlineKeyboardButton("Заменить обед", callback_data=f"change_lunch_{current_day}")
-        change_dinner = InlineKeyboardButton("Заменить ужин", callback_data=f"change_dinner_{current_day}")
-        change_day = InlineKeyboardButton("Заменить день", callback_data=f"change_day_{current_day}")
+        change_breakfast = InlineKeyboardButton("Заменить завтрак",
+                                                callback_data=f"change_breakfast_{current_day}_{mess_id}")
+        change_lunch = InlineKeyboardButton("Заменить обед", callback_data=f"change_lunch_{current_day}_{mess_id}")
+        change_dinner = InlineKeyboardButton("Заменить ужин", callback_data=f"change_dinner_{current_day}_{mess_id}")
+        change_day = InlineKeyboardButton("Заменить день", callback_data=f"change_day_{current_day}_{mess_id}")
 
         markup.add(change_breakfast)
         markup.add(change_lunch)
         markup.add(change_dinner)
         markup.add(change_day)
     else:
-        prev_day = InlineKeyboardButton(days[current_day], callback_data=f"prev_{current_day}")
-        next_day = InlineKeyboardButton(days[current_day+2], callback_data=f"next_{current_day}")
+        prev_day = InlineKeyboardButton(days[current_day], callback_data=f"prev_{current_day}_{mess_id}")
+        next_day = InlineKeyboardButton(days[current_day + 2], callback_data=f"next_{current_day}_{mess_id}")
         markup.add(prev_day, next_day)
-        change_breakfast = InlineKeyboardButton("Заменить завтрак", callback_data=f"change_breakfast_{current_day}")
-        change_lunch = InlineKeyboardButton("Заменить обед", callback_data=f"change_lunch_{current_day}")
-        change_dinner = InlineKeyboardButton("Заменить ужин", callback_data=f"change_dinner_{current_day}")
-        change_day = InlineKeyboardButton("Заменить день", callback_data=f"change_day_{current_day}")
+        change_breakfast = InlineKeyboardButton("Заменить завтрак",
+                                                callback_data=f"change_breakfast_{current_day}_{mess_id}")
+        change_lunch = InlineKeyboardButton("Заменить обед", callback_data=f"change_lunch_{current_day}_{mess_id}")
+        change_dinner = InlineKeyboardButton("Заменить ужин", callback_data=f"change_dinner_{current_day}_{mess_id}")
+        change_day = InlineKeyboardButton("Заменить день", callback_data=f"change_day_{current_day}_{mess_id}")
 
         markup.add(change_breakfast)
         markup.add(change_lunch)
         markup.add(change_dinner)
         markup.add(change_day)
-
+    main_menu = InlineKeyboardButton("Главное меню", callback_data=f"main_menu_{current_day}_{mess_id}")
+    markup.add(main_menu)
 
     return markup
 
 
-def get_menu(message):
-    global global_menu, global_shopping_list
-    payload = get_user_data(message)
+@bot.callback_query_handler(func=lambda call: call.data == "generate")
+def get_menu(call: types.CallbackQuery):
     try:
-        response = requests.post(FASTAPI_URL, json=payload)
+        payload = get_user_data(call.message)
+        response = requests.post(f"{FASTAPI_URL}/create", json=payload)
         response.raise_for_status()
         data = response.json()
         shopping_list = data['list_of_products']
         current_day = -1  # if day is -1, then we show shopping list
         shopping_list_text = format_shop_list(shopping_list)
         menu = data['menu']
-        global_menu = menu
-        global_shopping_list = shopping_list_text
-        markup = create_navigation_buttons(current_day)
-        bot.send_message(message.chat.id, shopping_list_text, reply_markup=markup)
+
+        chat_id = str(call.message.chat.id)
+        mess_id = str(call.message.message_id)
+        dt = {
+            "menu": menu,
+            "shopping_list": shopping_list_text
+        }
+        dt = json.dumps(dt)
+
+        user_payload = {
+            "chat_id": chat_id,
+            "mess_id": mess_id,
+            "data": dt
+        }
+
+        user_response = requests.post(f"{FASTAPI_URL}/user", params=user_payload)
+        user_response.raise_for_status()
+
+        markup = create_navigation_buttons(current_day, mess_id)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=shopping_list_text, reply_markup=markup)
 
     except requests.exceptions.RequestException as e:
-        bot.reply_to(message, f"Failed to retrieve menu: {e}")
+        bot.reply_to(call.message, f"Failed to retrieve menu: {e}")
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(('prev_', 'next_', 'list_')))
-def navigate_menu(call):
-    global global_menu, global_shopping_list
-    payload = get_user_data(call)
+@bot.callback_query_handler(func=lambda call: call.data.startswith(('prev_', 'next_', 'list_', 'main_menu')))
+def navigate_menu(call: types.CallbackQuery):
+    payload = get_user_data(call.message)
     try:
+        if 'main_menu' in call.data:
+            choose_param(call.message, option=1)
+            return
+
+        chat_id = str(call.message.chat.id)
+        mess_id = int(call.data.split('_')[2])
+
+        user_response = requests.get(f"{FASTAPI_URL}/user", params={"chat_id": chat_id, "mess_id": mess_id})
+        user_response.raise_for_status()
+        data = json.loads(json.loads(user_response.content))
         current_day = int(call.data.split('_')[1])
-        menu = global_menu
-        shopping_list = global_shopping_list
+        # bot.reply_to(call.message, f"The type: {type(data)}, the data: {[data]}")
+        menu = data['menu']
+        shopping_list = data['shopping_list']
         if 'prev' in call.data and current_day > -1:
             current_day -= 1
         elif 'next' in call.data and current_day < len(menu) - 1:
@@ -356,13 +383,12 @@ def navigate_menu(call):
         else:
             text = format_menu_day(menu, current_day)
 
-        markup = create_navigation_buttons(current_day)
+        markup = create_navigation_buttons(current_day, mess_id)
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text,
                               reply_markup=markup)
 
     except requests.exceptions.RequestException as e:
-        bot.reply_to(call.message, f"Failed to retrieve menu: {e}")
-
+        bot.reply_to(call.message, f"Failed to retrieve menu: {e}.")
 
 
 bot.infinity_polling()
