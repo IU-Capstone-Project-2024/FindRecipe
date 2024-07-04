@@ -76,42 +76,44 @@ def get_menu(bad_products: List[str] = None, calories: float = 2000,
     o = 0.4 * calories
     u = 0.35 * calories
 
-    recipes_z = list(filter(lambda x: x["Breakfast"] == 1, recipes))
-    recipes_ou = list(filter(lambda x: x["Breakfast"] == 0, recipes))
+    recipes_z = sorted(list(filter(lambda x: x["Breakfast"] == 1, recipes)), key=lambda x: abs(z - x["recipeCalories"]))
+    recipes_o = sorted(list(filter(lambda x: x["Breakfast"] == 0, recipes)), key=lambda x: abs(o - x["recipeCalories"]))
 
-    menu = [[z, o, u] for _ in range(7)]
+    menu = [[None, None, None] for _ in range(7)]
 
-    for i in range(7):
-        m = 10000000000000
-        r = None
-        for j in recipes_z:
-            if abs(j["recipeCalories"] - menu[i][0]) < m:
-                m = abs(j["recipeCalories"] - menu[i][0])
-                r = j
-        if not r:
-            raise Exception(f"can not find zavtrak #{i}")
-        recipes_z.remove(r)
-        menu[i][0] = r
-        m = 10000000000000
-        r = None
-        for j in recipes_ou:
-            if abs(j["recipeCalories"] - menu[i][1]) < m:
-                m = abs(j["recipeCalories"] - menu[i][1])
-                r = j
-        if not r:
-            raise Exception(f"can not find obed #{i}")
-        recipes_ou.remove(r)
-        menu[i][1] = r
-        m = 10000000000000
-        r = None
-        for j in recipes_ou:
-            if abs(j["recipeCalories"] - menu[i][2]) < m:
-                m = abs(j["recipeCalories"] - menu[i][2])
-                r = j
-        if not r:
-            raise Exception(f"can not find obed #{i}")
-        recipes_ou.remove(r)
-        menu[i][2] = r
+    recipes_delta50 = list(filter(lambda x: abs(z - x["recipeCalories"]) <= 50, recipes_z))
+    if len(recipes_delta50) >= 7:
+        pool = random.sample(recipes_delta50, 7)
+        for recipe in range(len(pool)):
+            menu[recipe][0] = pool[recipe]
+    else:
+        pool = random.sample(recipes_z[:7], 7)
+        for recipe in range(len(pool)):
+            menu[recipe][0] = pool[recipe]
+
+    recipes_delta50 = list(filter(lambda x: abs(o - x["recipeCalories"]) <= 50, recipes_o))
+    if len(recipes_delta50) >= 7:
+        pool = random.sample(recipes_delta50, 7)
+        for recipe in range(len(pool)):
+            menu[recipe][1] = pool[recipe]
+            recipes_o.remove(pool[recipe])
+    else:
+        pool = random.sample(recipes_o[:7], 7)
+        for recipe in range(len(pool)):
+            menu[recipe][1] = pool[recipe]
+            recipes_o.remove(pool[recipe])
+
+    recipes_u = sorted(recipes_o, key=lambda x: abs(u - x["recipeCalories"]))
+
+    recipes_delta50 = list(filter(lambda x: abs(u - x["recipeCalories"]) <= 50, recipes_u))
+    if len(recipes_delta50) >= 7:
+        pool = random.sample(recipes_delta50, 7)
+        for recipe in range(len(pool)):
+            menu[recipe][2] = pool[recipe]
+    else:
+        pool = random.sample(recipes_u[:7], 7)
+        for recipe in range(len(pool)):
+            menu[recipe][2] = pool[recipe]
 
     list_of_products = {}
     for ind in range(7):
@@ -119,8 +121,8 @@ def get_menu(bad_products: List[str] = None, calories: float = 2000,
             recipe_for_bot = {
                 # "name": str(find_names_of_products(string_to_list_int(i["Ingredients"]))) ,
                 # "name": str(menu[ind][i]) + "\n\n" + str(find_names_of_products(string_to_list_int(menu[ind][i]["Ingredients"]))),
+                "name": menu[ind][i]["Name"] + "\n" + str(menu[ind][i]["recipeCalories"]),
                 # "name": menu[ind][i]["Name"],
-                "name": menu[ind][i]["Name"],
                 "link_to_recipe": menu[ind][i]["URL"],
                 "link_to_image": menu[ind][i]["Picture URL"],
                 "time": menu[ind][i]["Cooking time in minutes"],
