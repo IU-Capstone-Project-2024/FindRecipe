@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 import requests
 from telebot import types
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
@@ -257,6 +257,7 @@ def get_user_data(message):
 def format_menu_day(menu, day_index):
     day_menu = menu[day_index]
     day_text = f"День {day_index + 1}:\n"
+    pictures = list()
     for recipe in day_menu:
         day_text += (
             f"- {recipe['name']}\n"
@@ -265,7 +266,8 @@ def format_menu_day(menu, day_index):
             f"  Белки/Жиры/Углеводы: {recipe['pfc'][0]}/{recipe['pfc'][1]}/{recipe['pfc'][2]}\n"
             f"  Ссылка на рецепт: {recipe['link_to_recipe']}\n"
         )
-    return day_text
+        pictures.append(recipe['link_to_image'])
+    return [day_text, pictures]
 
 
 def format_shop_list(shopping_list):
@@ -381,11 +383,23 @@ def navigate_menu(call: types.CallbackQuery):
         if current_day == -1:
             text = format_shop_list(shopping_list)
         else:
-            text = format_menu_day(menu, current_day)
+            response = format_menu_day(menu, current_day)
+            text = response[0]
+            pictures = response[1]
 
         markup = create_navigation_buttons(current_day, mess_id)
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text,
-                              reply_markup=markup)
+
+        if pictures:
+            # media_group = [open(pic, 'rb') for pic in pictures]
+            bot.edit_message_media(media=telebot.types.InputMedia(type='photo', media=open(bytes((requests.get(pictures[0])).content, 'rb')), caption=text),
+                                   chat_id=call.message.chat.id, message_id=call.message.message_id)
+            # bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text,
+            #                       reply_markup=markup)
+            # bot.edit_message_media(chat_id=call.message.chat.id, message_id=call.message.message_id, media=media_group, text=text)
+        else:
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text,
+                                  reply_markup=markup)
+
 
     except requests.exceptions.RequestException as e:
         bot.reply_to(call.message, f"Failed to retrieve menu: {e}.")
