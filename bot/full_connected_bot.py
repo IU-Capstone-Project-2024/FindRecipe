@@ -6,12 +6,18 @@ from dotenv import load_dotenv
 import requests
 from telebot import types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
+from io import BytesIO
+import urllib
+from PIL import Image
 
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 
 bot = telebot.TeleBot(TOKEN, parse_mode=None)
 FASTAPI_URL = os.getenv('FASTAPI')
+
+img = Image.new('RGB', (1, 1), color='white')
+img.save('white_pixel.jpg')
 
 #### Aliye
 
@@ -35,8 +41,9 @@ def main_page(message, text):
     txt = 'Начать составление'
     itembtn_generate = types.KeyboardButton(txt)
     markup.row(itembtn_generate)
-
-    bot.send_message(message.chat.id, text, parse_mode='html', reply_markup=markup)
+    photo = open('white_pixel.jpg', 'rb')
+    bot.send_photo(chat_id=message.chat.id, photo=photo, caption=text, parse_mode='html', reply_markup=markup)
+    # bot.send_message(message.chat.id, text, parse_mode='html', reply_markup=markup)
 
 
 @bot.message_handler(func=lambda message: message.text in ['Начать составление'])
@@ -62,11 +69,13 @@ def choose_param(message, option=None):
     markup.add(products)
 
     markup.add(blacklist)
+    photo = open('white_pixel.jpg', 'rb')
     if option:
-        bot.edit_message_text(chat_id=message.chat.id, message_id=message.message_id, text=txt,
+        media = types.InputMediaPhoto(photo, caption=txt)
+        bot.edit_message_media(media=media, chat_id=message.chat.id, message_id=message.message_id,
                               reply_markup=markup)
     else:
-        bot.send_message(message.chat.id, txt, parse_mode='html', reply_markup=markup)
+        bot.send_photo(message.chat.id, photo=photo, caption=txt, parse_mode='html', reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "products")
@@ -237,19 +246,14 @@ def get_user_data(message):
         "bad_products": [
             "string"
         ],
-        "calories": 2000,
+        "calories": 1500,
         "pfc": [
             0
         ],
         "time": 120,
-        "replace": [
-            [
-                True
-            ]
-        ],
         "diff": 5,
-        "spicy": 0,
-        "num_products": 25
+        "spicy": 5,
+        "num_products": 15
     }
     return payload
 
@@ -349,7 +353,9 @@ def get_menu(call: types.CallbackQuery):
         user_response.raise_for_status()
 
         markup = create_navigation_buttons(current_day, mess_id)
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=shopping_list_text, reply_markup=markup)
+        photo = open('white_pixel.jpg', 'rb')
+        media = types.InputMediaPhoto(photo, caption=shopping_list_text)
+        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
 
     except requests.exceptions.RequestException as e:
         bot.reply_to(call.message, f"Failed to retrieve menu: {e}")
@@ -370,7 +376,6 @@ def navigate_menu(call: types.CallbackQuery):
         user_response.raise_for_status()
         data = json.loads(json.loads(user_response.content))
         current_day = int(call.data.split('_')[1])
-        # bot.reply_to(call.message, f"The type: {type(data)}, the data: {[data]}")
         menu = data['menu']
         shopping_list = data['shopping_list']
         if 'prev' in call.data and current_day > -1:
@@ -390,19 +395,28 @@ def navigate_menu(call: types.CallbackQuery):
         markup = create_navigation_buttons(current_day, mess_id)
 
         if pictures:
-            # media_group = [open(pic, 'rb') for pic in pictures]
-            bot.edit_message_media(media=telebot.types.InputMedia(type='photo', media=open(bytes((requests.get(pictures[0])).content, 'rb')), caption=text),
+            download_image(pictures[0])
+            photo = open('image.jpg', 'rb')
+            media = types.InputMediaPhoto(photo, caption=text)
+            bot.edit_message_media(media=media,
                                    chat_id=call.message.chat.id, message_id=call.message.message_id)
-            # bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text,
-            #                       reply_markup=markup)
-            # bot.edit_message_media(chat_id=call.message.chat.id, message_id=call.message.message_id, media=media_group, text=text)
+
         else:
-            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text,
-                                  reply_markup=markup)
+            photo = open('white_pixel.jpg', 'rb')
+            media = types.InputMediaPhoto(photo, caption=text)
+            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, \
+                              reply_markup=markup)
 
 
     except requests.exceptions.RequestException as e:
         bot.reply_to(call.message, f"Failed to retrieve menu: {e}.")
 
+def download_image(url):
+    try:
+        file_path = 'image.jpg'
+        urllib.request.urlretrieve(url, file_path)
+        print(f"Image successfully downloaded and saved to {file_path}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to download image: {e}")
 
 bot.infinity_polling()
