@@ -86,10 +86,10 @@ def get_menu(bad_products: List[str] = None, calories: float = 2000,
         "Spicy": {"$lte": spicy}
     }
     recipes = list(db['recipes'].find(filter_for_query))
-
-    recipes = list(filter(
-        lambda x: not any([(i in bad_products) for i in find_names_of_products(string_to_list_int(x["Ingredients"]))]),
-        recipes))
+    if bad_products:
+        recipes = list(filter(
+            lambda x: not any([(i in bad_products) for i in find_names_of_products(string_to_list_int(x["Ingredients"]))]),
+            recipes))
 
     for recipe in recipes:
         recipe["recipeCalories"] = sum(string_to_list_float(recipe["Weights"])) / 100 * recipe["Calories"] / recipe[
@@ -222,7 +222,8 @@ def recreate_and_get_menu(menu: dict, bad_products: List[str] = None, calories: 
     list_of_products = list(get_list_of_products(recipes).items())  # [("Name", [weight, count]), (...), (...)]
 
     list_of_products.sort(key=lambda x: x[1][1] * 100000 + x[1][0], reverse=True)
-
+    if not bad_products:
+        bad_products = []
     bad_products += [i[0] for i in list_of_products[num_products:]]
     list_of_products = [i[0] for i in list_of_products[:num_products]]
 
