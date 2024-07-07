@@ -239,7 +239,7 @@ def recreate_and_get_menu(menu: dict, bad_products: List[str] = None, calories: 
     }
 
     filter_for_query = {
-        # "ID": {"$nin": list_bad_recipes_id},
+        "ID": {"$nin": list_bad_recipes_id},
         "Cooking time in minutes": {"$lte": time},
         "Difficulty": {"$lte": diff},
         "Spicy": {"$lte": spicy}
@@ -251,7 +251,6 @@ def recreate_and_get_menu(menu: dict, bad_products: List[str] = None, calories: 
                        zip(find_names_of_products(string_to_list_int(x["Ingredients"])),
                            string_to_list_float(x["Weights"]))]),
         recipes))
-
 
     for recipe in recipes:
         recipe["recipeCalories"] = sum(string_to_list_float(recipe["Weights"])) / 100 * recipe["Calories"] / recipe[
@@ -280,7 +279,6 @@ def recreate_and_get_menu(menu: dict, bad_products: List[str] = None, calories: 
         recipes_z += recipes_o
     if len(recipes_o) < cn_o + cn_u:
         recipes_o += recipes_z
-
 
     recipes_delta50 = list(filter(lambda x: abs(z - x["recipeCalories"]) <= 50, recipes_z))
     pool = None
@@ -356,6 +354,7 @@ def get_user(chat_id: str, mess_id: str):
     client = MongoClient(f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
     return client['findrecipe']["users"].find_one({"chat_id": chat_id, "mess_id": mess_id})["data"]
 
+
 @app.post("/user", response_model=str)
 def send_user(chat_id: str, mess_id: str, data: str):
     try:
@@ -382,6 +381,7 @@ def get_chs(chat_id: str):
     except Exception as e:
         raise "FAILED"
 
+
 @app.post("/chs", response_model=str)
 def send_chs(chat_id: str, data: str):
     try:
@@ -389,6 +389,40 @@ def send_chs(chat_id: str, data: str):
             f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
         db = client['findrecipe']
         result = db['chs'].update_one(
+            {"chat_id": chat_id},
+            {"$set": {"data": data}},
+            upsert=True
+        )
+        if result.matched_count > 0 or result.upserted_id is not None:
+            return "OK"
+        else:
+            return "Update failed"
+    except Exception as e:
+        raise "FAILED"
+
+
+@app.get("/preferences", response_model=str)
+def get_chs(chat_id: str):
+    try:
+        client = MongoClient(
+            f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
+        db = client['findrecipe']
+        document = db['preferences'].find_one({"chat_id": chat_id})
+        if document:
+            return document['data']
+        else:
+            return "Chat ID not found"
+    except Exception as e:
+        raise "FAILED"
+
+
+@app.post("/preferences", response_model=str)
+def send_chs(chat_id: str, data: str):
+    try:
+        client = MongoClient(
+            f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
+        db = client['findrecipe']
+        result = db['preferences'].update_one(
             {"chat_id": chat_id},
             {"$set": {"data": data}},
             upsert=True
