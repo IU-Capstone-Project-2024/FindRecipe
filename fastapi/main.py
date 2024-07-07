@@ -351,8 +351,16 @@ def recreate_and_get_menu(menu: dict, bad_products: List[str] = None, calories: 
 
 @app.get("/user", response_model=str)
 def get_user(chat_id: str, mess_id: str):
-    client = MongoClient(f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
-    return client['findrecipe']["users"].find_one({"chat_id": chat_id, "mess_id": mess_id})["data"]
+    try:
+        client = MongoClient(
+            f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
+        document = client['findrecipe']['user'].find_one({"chat_id": chat_id, "mess_id": mess_id})
+        if document:
+            return document['data']
+        else:
+            return "Chat ID not found"
+    except Exception as e:
+        raise "FAILED"
 
 
 @app.post("/user", response_model=str)
@@ -361,8 +369,15 @@ def send_user(chat_id: str, mess_id: str, data: str):
         client = MongoClient(
             f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
         db = client['findrecipe']
-        db['users'].insert_one({"chat_id": chat_id, "mess_id": mess_id, "data": data})
-        return "OK"
+        result = db['user'].update_one(
+            {"chat_id": chat_id, "mess_id": mess_id},
+            {"$set": {"data": data}},
+            upsert=True
+        )
+        if result.matched_count > 0 or result.upserted_id is not None:
+            return "OK"
+        else:
+            return "Update failed"
     except Exception:
         return "FAILED"
 
@@ -402,7 +417,7 @@ def send_chs(chat_id: str, data: str):
 
 
 @app.get("/preferences", response_model=str)
-def get_chs(chat_id: str):
+def get_preferences(chat_id: str):
     try:
         client = MongoClient(
             f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
@@ -417,7 +432,7 @@ def get_chs(chat_id: str):
 
 
 @app.post("/preferences", response_model=str)
-def send_chs(chat_id: str, data: str):
+def send_preferences(chat_id: str, data: str):
     try:
         client = MongoClient(
             f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
