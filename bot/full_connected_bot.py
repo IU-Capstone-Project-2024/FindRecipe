@@ -41,7 +41,7 @@ def main_page(message, text):
     txt = 'Начать составление'
     itembtn_generate = types.KeyboardButton(txt)
     markup.row(itembtn_generate)
-    photo = open('white_pixel.jpg', 'rb')
+    photo = open('intro.jpeg', 'rb')
     bot.send_photo(chat_id=message.chat.id, photo=photo, caption=text, parse_mode='html', reply_markup=markup)
     # bot.send_message(message.chat.id, text, parse_mode='html', reply_markup=markup)
 
@@ -69,7 +69,7 @@ def choose_param(message, option=None):
     markup.add(products)
 
     markup.add(blacklist)
-    photo = open('white_pixel.jpg', 'rb')
+    photo = open('intro.jpeg', 'rb')
     if option:
         media = types.InputMediaPhoto(photo, caption=txt)
         bot.edit_message_media(media=media, chat_id=message.chat.id, message_id=message.message_id,
@@ -353,7 +353,7 @@ def get_menu(call: types.CallbackQuery):
         user_response.raise_for_status()
 
         markup = create_navigation_buttons(current_day, mess_id)
-        photo = open('white_pixel.jpg', 'rb')
+        photo = open('list.JPG', 'rb')
         media = types.InputMediaPhoto(photo, caption=shopping_list_text)
         bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
 
@@ -395,14 +395,41 @@ def navigate_menu(call: types.CallbackQuery):
         markup = create_navigation_buttons(current_day, mess_id)
 
         if pictures:
-            download_image(pictures[0])
-            photo = open('image.jpg', 'rb')
-            media = types.InputMediaPhoto(photo, caption=text)
-            bot.edit_message_media(media=media,
-                                   chat_id=call.message.chat.id, message_id=call.message.message_id)
+            download_image(pictures[0], 'image.jpg')
+            download_image(pictures[1], 'image1.jpg')
+            download_image(pictures[2], 'image2.jpg')
 
+            image1 = Image.open('image.jpg')
+            image2 = Image.open('image1.jpg')
+            image3 = Image.open('image2.jpg')
+
+            width1, height1 = image1.size
+            width2, height2 = image2.size
+            width3, height3 = image3.size
+
+
+            total_width = width1 + width2 + width3
+            total_height = max(height1, height2, height3)
+            if height1 < total_height:
+                image1 = resize_to_height(image1, total_height)
+            if height2 < total_height:
+                image2 = resize_to_height(image2, total_height)
+            if height3 < total_height:
+                image3 = resize_to_height(image3, total_height)
+
+            collage = Image.new("RGB", (total_width, total_height), "white")
+
+            collage.paste(image1, (0, 0))
+            collage.paste(image2, (width1, 0))
+            collage.paste(image3, (width1 + width2, 0))
+
+            collage.save("collage.jpg")
+
+            photo = open('collage.jpg', 'rb')
+            media = types.InputMediaPhoto(photo, caption=text)
+            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
         else:
-            photo = open('white_pixel.jpg', 'rb')
+            photo = open('list.JPG', 'rb')
             media = types.InputMediaPhoto(photo, caption=text)
             bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, \
                               reply_markup=markup)
@@ -411,12 +438,19 @@ def navigate_menu(call: types.CallbackQuery):
     except requests.exceptions.RequestException as e:
         bot.reply_to(call.message, f"Failed to retrieve menu: {e}.")
 
-def download_image(url):
+def download_image(url, save_as):
     try:
-        file_path = 'image.jpg'
+        file_path = save_as
         urllib.request.urlretrieve(url, file_path)
         print(f"Image successfully downloaded and saved to {file_path}")
     except requests.exceptions.RequestException as e:
         print(f"Failed to download image: {e}")
+
+def resize_to_height(image, target_height):
+    width, height = image.size
+    new_width = int((target_height / height) * width)
+    resized_image = image.resize((new_width, target_height), Image.Resampling.LANCZOS)
+    return resized_image
+
 
 bot.infinity_polling()
