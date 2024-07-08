@@ -16,9 +16,6 @@ TOKEN = os.getenv('TOKEN')
 bot = telebot.TeleBot(TOKEN, parse_mode=None)
 FASTAPI_URL = os.getenv('FASTAPI')
 
-img = Image.new('RGB', (1, 1), color='white')
-img.save('white_pixel.jpg')
-
 #### Aliye
 
 user_data = dict()
@@ -41,7 +38,7 @@ def main_page(message, text):
     txt = 'Начать составление'
     itembtn_generate = types.KeyboardButton(txt)
     markup.row(itembtn_generate)
-    photo = open('intro.jpeg', 'rb')
+    photo = open('options.JPG', 'rb')
     bot.send_photo(chat_id=message.chat.id, photo=photo, caption=text, parse_mode='html', reply_markup=markup)
     # bot.send_message(message.chat.id, text, parse_mode='html', reply_markup=markup)
 
@@ -69,7 +66,7 @@ def choose_param(message, option=None):
     markup.add(products)
 
     markup.add(blacklist)
-    photo = open('intro.jpeg', 'rb')
+    photo = open('options.JPG', 'rb')
     if option:
         media = types.InputMediaPhoto(photo, caption=txt)
         bot.edit_message_media(media=media, chat_id=message.chat.id, message_id=message.message_id,
@@ -275,6 +272,8 @@ def format_menu_day(menu, day_index):
 
 
 def format_shop_list(shopping_list):
+    if isinstance(shopping_list, str):
+        return shopping_list
     shopping_list_text = "Shopping List:\n"
     for product, quantity in shopping_list.items():
         shopping_list_text += f"- {product}: {quantity}\n"
@@ -385,8 +384,9 @@ def navigate_menu(call: types.CallbackQuery):
         elif 'list' in call.data:
             send_product_list(call.message)
 
+        pictures = None
         if current_day == -1:
-            text = format_shop_list(shopping_list)
+            text = format_shop_list(data['shopping_list'])
         else:
             response = format_menu_day(menu, current_day)
             text = response[0]
@@ -431,8 +431,7 @@ def navigate_menu(call: types.CallbackQuery):
         else:
             photo = open('list.JPG', 'rb')
             media = types.InputMediaPhoto(photo, caption=text)
-            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, \
-                              reply_markup=markup)
+            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
 
 
     except requests.exceptions.RequestException as e:
