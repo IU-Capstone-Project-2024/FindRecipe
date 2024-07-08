@@ -11,17 +11,12 @@ import urllib
 from PIL import Image
 import re
 
-# load_dotenv()
-# TOKEN = os.getenv('TOKEN')
-#
-# bot = telebot.TeleBot(TOKEN, parse_mode=None)
-# FASTAPI_URL = os.getenv('FASTAPI')
 load_dotenv()
-API_TOKEN = '6399232568:AAGD9zt2uvhb0HkTcrrYTPWRr9WkQreY2RY'
-os.environ['TELEGRAM_API_TOKEN'] = API_TOKEN
+TOKEN = os.getenv('TOKEN')
 
-bot = telebot.TeleBot(API_TOKEN, parse_mode=None)
-FASTAPI_URL = "http://localhost:8000"
+bot = telebot.TeleBot(TOKEN, parse_mode=None)
+FASTAPI_URL = os.getenv('FASTAPI')
+
 global product_status
 global products
 img = Image.new('RGB', (1, 1), color='white')
