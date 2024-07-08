@@ -13,8 +13,9 @@ from PIL import Image
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 
-bot = telebot.TeleBot(TOKEN, parse_mode=None)
+bot = telebot.TeleBot(TOKEN)
 FASTAPI_URL = os.getenv('FASTAPI')
+
 
 #### Aliye
 
