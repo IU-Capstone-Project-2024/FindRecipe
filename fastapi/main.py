@@ -29,6 +29,39 @@ class Menu(BaseModel):
     menu: List[List[Recipe]]
 
 
+class ChatData(BaseModel):
+    data: str
+    chat_id: str
+
+
+class MessData(BaseModel):
+    mess_id: str
+    data: str
+    chat_id: str
+
+
+class FilterCreateMenu(BaseModel):
+    bad_products: List[str] = list()
+    calories: float = 2000
+    pfc: List[float] = list()
+    time: int = 120
+    diff: int = 5
+    spicy: int = 2
+    num_products: int = 15
+
+
+class FilterRecreateMenu(BaseModel):
+    menu: dict
+    bad_products: List[str] = list()
+    calories: float = 2000
+    pfc: List[float] = list()
+    time: int = 120
+    diff: int = 5
+    spicy: int = 2
+    num_products: int = 15
+    replace: List[int] = list()
+
+
 def string_to_list_int(s):  # "[2 4   5 3434]" -> [2, 4, 5, 3434]
     return list(map(int, s[1:len(s) - 1].split()))
 
@@ -43,9 +76,7 @@ def string_to_list_string(s):
 
 
 @app.post("/create", response_model=Menu)
-def get_menu(bad_products: List[str] = None, calories: float = 2000,
-             pfc: List[float] = None, time: int = 120,
-             diff: int = 5, spicy: int = 2, num_products: int = 15):
+def get_menu(filters: FilterCreateMenu = FilterCreateMenu()):
     def get_list_of_products(recipes: list):
         list_of_products = {}
         for recipe in recipes:
@@ -81,23 +112,24 @@ def get_menu(bad_products: List[str] = None, calories: float = 2000,
     }
 
     filter_for_query = {
-        "Cooking time in minutes": {"$lte": time},
-        "Difficulty": {"$lte": diff},
-        "Spicy": {"$lte": spicy}
+        "Cooking time in minutes": {"$lte": filters.time},
+        "Difficulty": {"$lte": filters.diff},
+        "Spicy": {"$lte": filters.spicy}
     }
     recipes = list(db['recipes'].find(filter_for_query))
-    if bad_products:
+    if filters.bad_products:
         recipes = list(filter(
-            lambda x: not any([(i in bad_products) for i in find_names_of_products(string_to_list_int(x["Ingredients"]))]),
+            lambda x: not any(
+                [(i in filters.bad_products) for i in find_names_of_products(string_to_list_int(x["Ingredients"]))]),
             recipes))
 
     for recipe in recipes:
         recipe["recipeCalories"] = sum(string_to_list_float(recipe["Weights"])) / 100 * recipe["Calories"] / recipe[
             "Servings"]
 
-    z = 0.25 * calories
-    o = 0.4 * calories
-    u = 0.35 * calories
+    z = 0.25 * filters.calories
+    o = 0.4 * filters.calories
+    u = 0.35 * filters.calories
 
     recipes_z = sorted(list(filter(lambda x: x["Breakfast"] == 1, recipes)), key=lambda x: abs(z - x["recipeCalories"]))
     recipes_o = sorted(list(filter(lambda x: x["Breakfast"] == 0, recipes)), key=lambda x: abs(o - x["recipeCalories"]))
@@ -170,13 +202,17 @@ def get_menu(bad_products: List[str] = None, calories: float = 2000,
 
     response["list_of_products"] = list_of_products
 
-    return recreate_and_get_menu(response, bad_products, calories, pfc, time, diff, spicy, num_products)
+    return recreate_and_get_menu(FilterRecreateMenu(
+        menu=response, bad_products=filters.bad_products,
+        calories=filters.calories, pfc=filters.pfc, time=filters.time,
+        diff=filters.diff, num_products=filters.num_products
+    ))
 
 
 @app.post("/recreate", response_model=Menu)
-def recreate_and_get_menu(menu: dict, bad_products: List[str] = None, calories: float = 2000,
-                          pfc: List[float] = None, time: int = 120,
-                          diff: int = 5, spicy: int = 2, num_products: int = 15, replace: List[int] = None):
+def recreate_and_get_menu(filters: FilterRecreateMenu):
+    menu = filters.menu
+
     def get_list_of_products(recipes: list):
         list_of_products = {}
         for recipe in recipes:
@@ -208,8 +244,8 @@ def recreate_and_get_menu(menu: dict, bad_products: List[str] = None, calories: 
         for recipe in i:
             list_bad_recipes_id.append(recipe["id"])
 
-    if replace:
-        for num in replace:
+    if filters.replace:
+        for num in filters.replace:
             i, j = num // 3, num % 3
             menu["menu"][i][j] = None
 
@@ -222,10 +258,10 @@ def recreate_and_get_menu(menu: dict, bad_products: List[str] = None, calories: 
     list_of_products = list(get_list_of_products(recipes).items())  # [("Name", [weight, count]), (...), (...)]
 
     list_of_products.sort(key=lambda x: x[1][1] * 100000 + x[1][0], reverse=True)
-    if not bad_products:
-        bad_products = []
-    bad_products += [i[0] for i in list_of_products[num_products:]]
-    list_of_products = [i[0] for i in list_of_products[:num_products]]
+    if not filters.bad_products:
+        filters.bad_products = []
+    filters.bad_products += [i[0] for i in list_of_products[filters.num_products:]]
+    list_of_products = [i[0] for i in list_of_products[:filters.num_products]]
 
     for i in menu["menu"]:
         for recipe in range(len(i)):
@@ -241,9 +277,9 @@ def recreate_and_get_menu(menu: dict, bad_products: List[str] = None, calories: 
 
     filter_for_query = {
         "ID": {"$nin": list_bad_recipes_id},
-        "Cooking time in minutes": {"$lte": time},
-        "Difficulty": {"$lte": diff},
-        "Spicy": {"$lte": spicy}
+        "Cooking time in minutes": {"$lte": filters.time},
+        "Difficulty": {"$lte": filters.diff},
+        "Spicy": {"$lte": filters.spicy}
     }
     recipes = list(db['recipes'].find(filter_for_query))
 
@@ -257,9 +293,9 @@ def recreate_and_get_menu(menu: dict, bad_products: List[str] = None, calories: 
         recipe["recipeCalories"] = sum(string_to_list_float(recipe["Weights"])) / 100 * recipe["Calories"] / recipe[
             "Servings"]
 
-    z = 0.25 * calories
-    o = 0.4 * calories
-    u = 0.35 * calories
+    z = 0.25 * filters.calories
+    o = 0.4 * filters.calories
+    u = 0.35 * filters.calories
 
     recipes_z = sorted(list(filter(lambda x: x["Breakfast"] == 1, recipes)), key=lambda x: abs(z - x["recipeCalories"]))
     recipes_o = sorted(list(filter(lambda x: x["Breakfast"] == 0, recipes)), key=lambda x: abs(o - x["recipeCalories"]))
@@ -365,14 +401,14 @@ def get_user(chat_id: str, mess_id: str):
 
 
 @app.post("/user", response_model=str)
-def send_user(chat_id: str, mess_id: str, data: str):
+def send_user(data: MessData):
     try:
         client = MongoClient(
             f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
         db = client['findrecipe']
         result = db['user'].update_one(
-            {"chat_id": chat_id, "mess_id": mess_id},
-            {"$set": {"data": data}},
+            {"chat_id": data.chat_id, "mess_id": data.mess_id},
+            {"$set": {"data": data.data}},
             upsert=True
         )
         if result.matched_count > 0 or result.upserted_id is not None:
@@ -399,14 +435,14 @@ def get_chs(chat_id: str):
 
 
 @app.post("/chs", response_model=str)
-def send_chs(chat_id: str, data: str):
+def send_chs(data: ChatData):
     try:
         client = MongoClient(
             f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
         db = client['findrecipe']
         result = db['chs'].update_one(
-            {"chat_id": chat_id},
-            {"$set": {"data": data}},
+            {"chat_id": data.chat_id},
+            {"$set": {"data": data.data}},
             upsert=True
         )
         if result.matched_count > 0 or result.upserted_id is not None:
@@ -433,14 +469,14 @@ def get_preferences(chat_id: str):
 
 
 @app.post("/preferences", response_model=str)
-def send_preferences(chat_id: str, data: str):
+def send_preferences(data: ChatData):
     try:
         client = MongoClient(
             f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
         db = client['findrecipe']
         result = db['preferences'].update_one(
-            {"chat_id": chat_id},
-            {"$set": {"data": data}},
+            {"chat_id": data.chat_id},
+            {"$set": {"data": data.data}},
             upsert=True
         )
         if result.matched_count > 0 or result.upserted_id is not None:

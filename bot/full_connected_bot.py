@@ -326,7 +326,8 @@ def create_navigation_buttons(current_day, mess_id):
 @bot.callback_query_handler(func=lambda call: call.data == "generate")
 def get_menu(call: types.CallbackQuery):
     try:
-        payload = get_user_data(call.message)
+        # payload = get_user_data(call.message)
+        payload = {}
         response = requests.post(f"{FASTAPI_URL}/create", json=payload)
         response.raise_for_status()
         data = response.json()
@@ -349,7 +350,7 @@ def get_menu(call: types.CallbackQuery):
             "data": dt
         }
 
-        user_response = requests.post(f"{FASTAPI_URL}/user", params=user_payload)
+        user_response = requests.post(f"{FASTAPI_URL}/user", json=user_payload)
         user_response.raise_for_status()
 
         markup = create_navigation_buttons(current_day, mess_id)
