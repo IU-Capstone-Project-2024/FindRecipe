@@ -9,13 +9,21 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMedia
 from io import BytesIO
 import urllib
 from PIL import Image
+import re
 
+# load_dotenv()
+# TOKEN = os.getenv('TOKEN')
+#
+# bot = telebot.TeleBot(TOKEN, parse_mode=None)
+# FASTAPI_URL = os.getenv('FASTAPI')
 load_dotenv()
-TOKEN = os.getenv('TOKEN')
+API_TOKEN = '6399232568:AAGD9zt2uvhb0HkTcrrYTPWRr9WkQreY2RY'
+os.environ['TELEGRAM_API_TOKEN'] = API_TOKEN
 
-bot = telebot.TeleBot(TOKEN, parse_mode=None)
-FASTAPI_URL = os.getenv('FASTAPI')
-
+bot = telebot.TeleBot(API_TOKEN, parse_mode=None)
+FASTAPI_URL = "http://localhost:8000"
+global product_status
+global products
 img = Image.new('RGB', (1, 1), color='white')
 img.save('white_pixel.jpg')
 
@@ -144,51 +152,94 @@ def process_complexity_input(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == "blacklist")
 def modify_blacklist(call: types.CallbackQuery):
-    send_product_list(call.message)
 
+    send_product_list(call, call.message)
 
+@bot.callback_query_handler(func=lambda call: call.data == "generate")
+def generate(call: types.CallbackQuery):
+    get_menu(call)
 ### Sofia
 
 blacklist = []
 
+def return_edit(message):
+    txt = 'Выбери параметр, чтобы изменить его'
+    markup = types.InlineKeyboardMarkup()
+    calories = types.InlineKeyboardButton('калорийность', callback_data='calories')
+    time = types.InlineKeyboardButton('время готовки', callback_data='time')
+    products = types.InlineKeyboardButton('количество продуктов', callback_data='products')
+    spicy = types.InlineKeyboardButton('острота', callback_data='spicy')
+    complexity = types.InlineKeyboardButton('сложность', callback_data='complexity')
+    blacklist = types.InlineKeyboardButton('черный список', callback_data='blacklist')
+    generate = types.InlineKeyboardButton('составить меню', callback_data='generate')
 
-def read_products(filename):
-    file = open(filename)
-    data = json.load(file)
-    products = [product[0] for product in data['list_of_products'].items()]
-    return products
+    # Organizing buttons into rows and individual placements
+    markup.add(generate)
+    markup.row(calories, time)
+    markup.row(spicy, complexity)
+    markup.add(products)
+    markup.add(blacklist)
+
+    # Editing the original message instead of sending a new one
+    bot.edit_message_text(chat_id=message.chat.id,
+                          message_id=message.message_id,
+                          text=txt,
+                          reply_markup=markup,
+                          parse_mode='html')
+@bot.callback_query_handler(func=lambda call: call.data == "chs_")
+def modify_products(call: types.CallbackQuery):
+    return_edit(call.message)
+
+@bot.callback_query_handler(func=lambda call: call.data == "back")
+def modify_time(call: types.CallbackQuery):
+    return_edit(call.message)
+def update_status(product):
+    global product_status
+    product_status[product] = not product_status[product]
+
+def create_status(products):
+    global product_status
+    product_status = {product: False for product in products}
 
 
-def add_blacklist(products, filename):
-    file = open(filename)
-    data = json.load(file)
-    file.close()
-    if 'blacklist' not in data:
-        data['blacklist'] = {}
-    for elem in products:
-        data['blacklist'][elem] = None
-    with open(filename, 'w') as file:
-        json.dump(data, file)
+def send_product_list(call: CallbackQuery, message, page=0):
+    global products
+    try:
+        # response = requests.post(f"{FASTAPI_URL}/chs", params=data)
+        response = requests.get(f"{FASTAPI_URL}/chs", params={"chat_id": str(message.chat.id)})
 
+        if response.text[1] != "[":
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton("Назад", callback_data="chs_"))
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
+                                  text='Черный список пуст', reply_markup=markup)
+            return
+        else:
+            pr_l = response.text
+            pattern = re.compile(r"[\w\s]+", re.U)
+            pr_l = pattern.findall(pr_l)
+            products = [word.strip() for word in pr_l if word.strip()]
+            create_status(products)
+            markup = create_product_markup(page, products)
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
+                                  text="Выберите продукты, чтобы удалить из списка:", reply_markup=markup)
+    except Exception as e:
+        bot.reply_to(message, f"Error: {str(e)}")
 
-products = read_products("test.json")
-buttons_per_page = min(max(5, (len(products) + 2) // 3), 10)
-
-product_status = {product: False for product in products}
-
-
-def send_product_list(message, page=0):
-    markup = create_product_markup(page)
-    bot.send_message(message.chat.id, "Выберите продукты, чтобы добавить в черный список:", reply_markup=markup)
-
-
-def create_product_markup(page):
+def add_shopping_list(call: CallbackQuery, message, page=0):
+    global products
+    print(products)
+    create_status(products)
+    markup = create_shopping_markup(page, products)
+    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
+                                  text="Выберите продукты, чтобы добавить в чс:", reply_markup=markup)
+def create_product_markup(page, products):
+    buttons_per_page = min(max(5, (len(products) + 2) // 3), 10)
     markup = InlineKeyboardMarkup()
     start = page * buttons_per_page
     end = start + buttons_per_page
-
     for product in products[start:end]:
-        emoji = " 🔴" if product_status[product] else ""
+        emoji = " ✅" if product_status[product] else " 🔴"
         markup.add(InlineKeyboardButton(product + emoji, callback_data=f"product_{product}"))
 
     if len(products) > buttons_per_page:
@@ -199,45 +250,128 @@ def create_product_markup(page):
             pagination_buttons.append(InlineKeyboardButton("➡️", callback_data=f"page_{page + 1}"))
         markup.add(*pagination_buttons)
 
-    markup.add(InlineKeyboardButton("Добавить продукты в черный список", callback_data="confirm"))
+    markup.add(InlineKeyboardButton("Завершить редактирование черного списка", callback_data="confirm"))
 
     return markup
 
+def create_shopping_markup(page, products):
+    buttons_per_page = min(max(5, (len(products) + 2) // 3), 8)
+    markup = InlineKeyboardMarkup()
+    start = page * buttons_per_page
+    end = start + buttons_per_page
+    counter = start
+    for product in products[start:end]:
 
+        emoji = " 🔴" if product_status[product] else ""
+        markup.add(InlineKeyboardButton(product + emoji, callback_data=f"sh_{counter}"))
+        counter += 1
+
+    if len(products) > buttons_per_page:
+        pagination_buttons = []
+        if page > 0:
+            pagination_buttons.append(InlineKeyboardButton("⬅️", callback_data=f"shpage_{page - 1}"))
+        if end < len(products):
+            pagination_buttons.append(InlineKeyboardButton("➡️", callback_data=f"shpage_{page + 1}"))
+        markup.add(*pagination_buttons)
+
+    markup.add(InlineKeyboardButton("Добавить продукты в черный список", callback_data="shconfirm"))
+
+    return markup
 @bot.callback_query_handler(func=lambda call: call.data.startswith("page_"))
 def page_handler(call: CallbackQuery):
     page = int(call.data.split("_")[1])
-    markup = create_product_markup(page)
+    markup = create_product_markup(page, products)
     bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
 
-
+@bot.callback_query_handler(func=lambda call: call.data.startswith("shpage_"))
+def page_handler(call: CallbackQuery):
+    page = int(call.data.split("_")[1])
+    markup = create_shopping_markup(page, products)
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
 @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm"))
 def confirm_handler(call: CallbackQuery):
     selected_products = [product for product, status in product_status.items() if status]
     if selected_products:
+        selected_products = [product for product, status in product_status.items() if not status]
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("Вернуться к редактированию меню", callback_data="back"))
+        data = {
+            "chat_id": str(call.message.chat.id),
+            "data": str(selected_products)
+        }
+        try:
+            requests.post(f"{FASTAPI_URL}/chs", params=data)
+        except:
+            print("err")
         bot.edit_message_text(
-            f"Добавлены в черный список:\n" + "\n".join(selected_products),
+            f"Текущий черный список:\n" + "\n".join(selected_products),
             call.message.chat.id,
-            call.message.message_id
+            call.message.message_id,
+            reply_markup=markup
         )
-        add_blacklist(selected_products, "test.json")
     else:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("Вернуться к редактированию меню", callback_data="back"))
         bot.edit_message_text(
             "Черный список не обновлен.",
             call.message.chat.id,
-            call.message.message_id
+            call.message.message_id,
+            reply_markup=markup
         )
 
-
+@bot.callback_query_handler(func=lambda call: call.data.startswith("shconfirm"))
+def shconfirm_handler(call: CallbackQuery):
+    selected_products = [product for product, status in product_status.items() if status]
+    if selected_products:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("Вернуться к меню", callback_data="next_-1"))
+        data = {
+            "chat_id": str(call.message.chat.id),
+            "data": str(selected_products)
+        }
+        try:
+            requests.post(f"{FASTAPI_URL}/chs", params=data)
+        except:
+            print("err")
+        bot.edit_message_text(
+            f"Текущий черный список:\n" + "\n".join(selected_products),
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup
+        )
+    else:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("Вернуться к редактированию меню", callback_data="next_-1"))
+        bot.edit_message_text(
+            "Черный список не обновлен.",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup
+        )
 @bot.callback_query_handler(func=lambda call: call.data.startswith("product"))
 def handle_product(call: CallbackQuery):
     product = call.data.split("_", 1)[1]
-    product_status[product] = not product_status[product]
 
-    page = next((i for i, p in enumerate(products) if product in p)) // buttons_per_page
-    markup = create_product_markup(page)
+    update_status(product)
+    buttons_per_page = min(max(5, (len(products) + 2) // 3), 10)
+    page = next((i for i, p in enumerate(products) if product in p))
+    if page is None:
+        page = 0
+    else:
+        page = page // buttons_per_page
+    print(page)
+    markup = create_shopping_markup(page, products)
     bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith("sh_"))
+def handle_sh_product(call: CallbackQuery):
+    product_ind = int(call.data.split("_", 1)[1])
+    product = products[product_ind]
+    update_status(product)
+    buttons_per_page = min(max(5, (len(products) + 2) // 3), 8)
+    page = product_ind // buttons_per_page
+    markup = create_shopping_markup(page, products)
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
 
 ### Ilsiia
 
@@ -334,7 +468,8 @@ def get_menu(call: types.CallbackQuery):
         current_day = -1  # if day is -1, then we show shopping list
         shopping_list_text = format_shop_list(shopping_list)
         menu = data['menu']
-
+        global products
+        products = [product for product, status in shopping_list.items()]
         chat_id = str(call.message.chat.id)
         mess_id = str(call.message.message_id)
         dt = {
@@ -361,7 +496,7 @@ def get_menu(call: types.CallbackQuery):
         bot.reply_to(call.message, f"Failed to retrieve menu: {e}")
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(('prev_', 'next_', 'list_', 'main_menu')))
+@bot.callback_query_handler(func=lambda call: call.data.startswith(('prev_', 'next_', 'main_menu')))
 def navigate_menu(call: types.CallbackQuery):
     payload = get_user_data(call.message)
     try:
@@ -382,8 +517,6 @@ def navigate_menu(call: types.CallbackQuery):
             current_day -= 1
         elif 'next' in call.data and current_day < len(menu) - 1:
             current_day += 1
-        elif 'list' in call.data:
-            send_product_list(call.message)
 
         if current_day == -1:
             text = format_shop_list(shopping_list)
@@ -452,5 +585,7 @@ def resize_to_height(image, target_height):
     resized_image = image.resize((new_width, target_height), Image.Resampling.LANCZOS)
     return resized_image
 
-
+@bot.callback_query_handler(func=lambda call: call.data.startswith('list_'))
+def ch_list(call):
+    add_shopping_list(call, call.message)
 bot.infinity_polling()
