@@ -16,7 +16,7 @@ TOKEN = os.getenv('TOKEN')
 bot = telebot.TeleBot(TOKEN)
 FASTAPI_URL = os.getenv('FASTAPI')
 
-
+MIN_DIMENSION = 320
 #### Aliye
 
 user_data = dict()
@@ -404,19 +404,23 @@ def navigate_menu(call: types.CallbackQuery):
             image2 = Image.open('image1.jpg')
             image3 = Image.open('image2.jpg')
 
-            width1, height1 = image1.size
-            width2, height2 = image2.size
-            width3, height3 = image3.size
+            height1 = image1.size[1]
+            height2 = image2.size[1]
+            height3 = image3.size[1]
 
+            total_height = min(height1, height2, height3)
+            if height1 > total_height:
+                image1 = resize_to_height(image1, total_height)
+            if height2 > total_height:
+                image2 = resize_to_height(image2, total_height)
+            if height3 > total_height:
+                image3 = resize_to_height(image3, total_height)
+
+            width1 = image1.size[0]
+            width2 = image2.size[0]
+            width3 = image3.size[0]
 
             total_width = width1 + width2 + width3
-            total_height = max(height1, height2, height3)
-            if height1 < total_height:
-                image1 = resize_to_height(image1, total_height)
-            if height2 < total_height:
-                image2 = resize_to_height(image2, total_height)
-            if height3 < total_height:
-                image3 = resize_to_height(image3, total_height)
 
             collage = Image.new("RGB", (total_width, total_height), "white")
 
@@ -426,8 +430,10 @@ def navigate_menu(call: types.CallbackQuery):
 
             collage.save("collage.jpg")
 
+
             photo = open('collage.jpg', 'rb')
             media = types.InputMediaPhoto(photo, caption=text)
+
             bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
         else:
             photo = open('list.JPG', 'rb')
@@ -446,11 +452,17 @@ def download_image(url, save_as):
     except requests.exceptions.RequestException as e:
         print(f"Failed to download image: {e}")
 
-def resize_to_height(image, target_height):
+# def resize_to_height(image, target_height):
+#     width, height = image.size
+#     new_width = int((target_height / height) * width)
+#     resized_image = image.resize((new_width, target_height), Image.Resampling.LANCZOS)
+#     return resized_image
+
+def resize_to_height(image, new_height):
     width, height = image.size
-    new_width = int((target_height / height) * width)
-    resized_image = image.resize((new_width, target_height), Image.Resampling.LANCZOS)
-    return resized_image
+    new_width = new_height * width / height
+    img = image.resize((int(new_width), new_height), Image.LANCZOS)
+    return img
 
 
 bot.infinity_polling()
