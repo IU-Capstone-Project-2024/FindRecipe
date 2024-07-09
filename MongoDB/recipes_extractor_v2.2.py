@@ -1,3 +1,5 @@
+import csv
+
 import requests
 from bs4 import BeautifulSoup
 import time
@@ -53,29 +55,31 @@ def parse_recipe(rec_id):
         log_info(f"There is no recipe {rec_id}, skipping...")
         return
     curr_id += 1
-    ids.append(curr_id)
-    urls.append(source)
+    row = []
+    row.append(curr_id)
     soup = BeautifulSoup(response.content, "html.parser")
 
-    name.append(soup.find('h1', class_='title_main__ok7t1').contents[0])
-    cooking_time.append(
+    row.append(soup.find('h1', class_='title_main__ok7t1').contents[0])
+    breakfast_contents = soup.find_all('a', class_='tag_tag__2fJAC')
+    row.append(is_breakfast(breakfast_contents))
+    row.append(
         soup.find('div', class_='properties_value__kAeD9 properties_valueWithIcon__WDXDm duration').contents[-1])
 
-    serving_type.append(soup.find('h3', class_='ingredientsCalculator_subTitle__Pg0B_').contents[0])
-    servings.append(soup.find('input', class_='input yield default yield')['value'])
-    calories.append(to_float(soup.find('abbr', class_='calories').get('title').split()[0]))
-    protein.append(to_float(soup.find('abbr', class_='protein').get('title').split()[0]))
-    fat.append(to_float(soup.find('abbr', class_='fat').get('title').split()[0]))
-    carbs.append(to_float(soup.find('abbr', class_='carbohydrates').get('title').split()[0]))
+    row.append(soup.find('h3', class_='ingredientsCalculator_subTitle__Pg0B_').contents[0])
+    row.append(soup.find('input', class_='input yield default yield')['value'])
+    row.append(to_float(soup.find('abbr', class_='calories').get('title').split()[0]))
+    row.append(to_float(soup.find('abbr', class_='protein').get('title').split()[0]))
+    row.append(to_float(soup.find('abbr', class_='fat').get('title').split()[0]))
+    row.append(to_float(soup.find('abbr', class_='carbohydrates').get('title').split()[0]))
     diff_contents, spicy_contents = soup.find_all('div', class_='properties_level___bLQQ')
-    difficulty.append(collect_difficulty(diff_contents))
-    spicy.append(collect_spicy(spicy_contents))
+    row.append(collect_difficulty(diff_contents))
+    row.append(collect_spicy(spicy_contents))
     ingredients = soup.find_all('span', class_='name')
-    ingredients_lists.append([str(ingredient.contents[0]) for ingredient in ingredients])
+    row.append([str(ingredient.contents[0]) for ingredient in ingredients])
     [all_ingredients.append(str(ingredient.contents[0])) for ingredient in ingredients]
     curr_types = soup.find_all('span', class_='type')
     curr_types = [span.contents[0] for span in curr_types]
-    types.append(curr_types)
+    row.append(curr_types)
     raw_weights = soup.find_all('span', class_='value')
     curr_weights = []
     raw_iter = 0
@@ -85,38 +89,27 @@ def parse_recipe(rec_id):
         else:
             curr_weights.append(float(raw_weights[raw_iter].contents[0]))
             raw_iter += 1
-    weights.append(curr_weights)
-    pic_urls.append(soup.find('div', class_='image_outer__M09PO image_widescreen__I7uNl').
-                    contents[1].get('href').replace("640", "2544").replace("480", "1908"))
-    breakfast_contents = soup.find_all('a', class_='tag_tag__2fJAC')
-    breakfast.append(is_breakfast(breakfast_contents))
+    row.append(curr_weights)
+    row.append(source)
+    row.append(soup.find('div', class_='image_outer__M09PO image_widescreen__I7uNl').
+               contents[1].get('href').replace("640", "2544").replace("480", "1908"))
+    with open("recipes.csv", "a", encoding='utf8', newline='') as file:
+        wr = csv.writer(file)
+        wr.writerow(row)
 
 
+with open("recipes.csv", "w", encoding='utf8', newline='') as csvfile:
+    w = csv.writer(csvfile)
+    w.writerow(["ID", "Name", "Breakfast", "Cooking time", "Serving type", "Servings", "Calories", "Protein", "Fat",
+                "Carbs", "Difficulty", "Spicy", "Ingredients", "Types", "Weights", "URL", "Picture URL"])
 all_ingredients = []
-ids = []
-urls = []
-name = []
-cooking_time = []
-serving_type = []
-servings = []
-calories = []
-protein = []
-fat = []
-carbs = []
-difficulty = []
-spicy = []
-ingredients_lists = []
-weights = []
-types = []
-pic_urls = []
-breakfast = []
 curr_id = 0
 dead = False
 recipe_id = 189999
 while recipe_id < 220000:
     recipe_id += 1
-    if recipe_id % 100 == 0:
-        print(f"Parsing recipes {recipe_id}-{recipe_id + 100}")
+    if recipe_id % 10 == 0:
+        print(f"Parsing recipes {recipe_id}-{recipe_id + 10}")
     if dead:
         recipe_id -= 1
         print("Going to sleep...")
@@ -134,11 +127,6 @@ while recipe_id < 220000:
 
 all_ingredients = sorted(set(all_ingredients))
 ingredients_ids = [i + 1 for i in range(len(all_ingredients))]
-pl.DataFrame(
-    {"ID": ids, "Name": name, "Breakfast": breakfast, "Cooking time": cooking_time, "Serving type": serving_type,
-     "Servings": servings, "Calories": calories, "Protein": protein, "Fat": fat, "Carbs": carbs,
-     "Difficulty": difficulty, "Spicy": spicy, "Ingredients": ingredients_lists, "Weights": weights,
-     "Types": types, "URL": urls, "Picture URL": pic_urls}, strict=False).to_pandas().to_csv('recipes.csv', index=False)
 pl.DataFrame({"ID": ingredients_ids, "Ingredients": list(all_ingredients)},
              strict=False).to_pandas().to_csv('ingredients.csv', index=False)
 
@@ -147,9 +135,10 @@ recipe_ingredients = pl.read_csv("recipes.csv").get_column("Ingredients").to_lis
 recipe_ingredients = [ingr.replace('[', '').replace(']', '').replace('\n', '').split("' ") for ingr in
                       recipe_ingredients]
 recipe_ingredients = [[ingr.replace("'", '') for ingr in ingrs] for ingrs in recipe_ingredients]
+recipe_ingredients = [ingrs[0].split(', ') for ingrs in recipe_ingredients]
 recipe_ingredients = [[all_ingredients.index(ingr) + 1 for ingr in ingrs] for ingrs in recipe_ingredients]
 all_weights = pl.read_csv("recipes.csv").get_column("Weights").to_list()
-all_weights = [weight.replace('[', '').replace(']', '').split() for weight in all_weights]
+all_weights = [weight.replace('[', '').replace(']', '').split(", ") for weight in all_weights]
 all_weights = [[float(weight) for weight in weights] for weights in all_weights]
 ids = []
 recipe_ids = []
