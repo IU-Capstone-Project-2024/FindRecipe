@@ -29,6 +29,7 @@ class Menu(BaseModel):
     menu: List[List[Recipe]]
 
 
+
 class ChatData(BaseModel):
     data: str
     chat_id: str
@@ -469,6 +470,7 @@ def get_preferences(chat_id: str):
 
 
 @app.post("/preferences", response_model=str)
+
 def send_preferences(data: ChatData):
     try:
         client = MongoClient(
@@ -485,6 +487,8 @@ def send_preferences(data: ChatData):
             return "Update failed"
     except Exception as e:
         raise "FAILED"
+
+
 
 # {'_id': ObjectId('66852e3e82d561d774654c7d'), 'ID': 191, 'Name':
 # 'Быстрые маринованные вешенки', 'Breakfast': 0, 'Cooking time in minutes': 160,
