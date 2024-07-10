@@ -2,8 +2,8 @@ FROM mongo:latest
 
 RUN apt update
 RUN apt install wget -y
-RUN wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2004-x86_64-100.9.5.deb
-RUN apt install -y --allow-downgrades ./mongodb-database-tools-ubuntu2004-x86_64-100.9.5.deb
+RUN wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2004-arm64-100.9.5.deb
+RUN apt install -y --allow-downgrades ./mongodb-database-tools-ubuntu2004-arm64-100.9.5.deb
 
 COPY . .
 

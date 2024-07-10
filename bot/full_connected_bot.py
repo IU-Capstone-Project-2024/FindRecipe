@@ -326,8 +326,8 @@ def create_navigation_buttons(current_day, mess_id):
 @bot.callback_query_handler(func=lambda call: call.data == "generate")
 def get_menu(call: types.CallbackQuery):
     try:
-        # payload = get_user_data(call.message)
-        payload = {}
+        payload = get_user_data(call.message)
+        # payload = {}
         response = requests.post(f"{FASTAPI_URL}/create", json=payload)
         response.raise_for_status()
         data = response.json()
@@ -362,7 +362,7 @@ def get_menu(call: types.CallbackQuery):
         bot.reply_to(call.message, f"Failed to retrieve menu: {e}")
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(('prev_', 'next_', 'list_', 'main_menu')))
+@bot.callback_query_handler(func=lambda call: call.data.startswith(('prev_', 'next_', 'list_', 'main_menu', 'change_')))
 def navigate_menu(call: types.CallbackQuery):
     payload = get_user_data(call.message)
     try:
@@ -385,6 +385,39 @@ def navigate_menu(call: types.CallbackQuery):
             current_day += 1
         elif 'list' in call.data:
             send_product_list(call.message)
+        elif 'change_breakfast_' in call.data:
+            payload = get_user_data(call.message)
+            replace = [current_day * 3]
+            payload["replace"] = replace
+            payload["menu"] = [menu, shopping_list]
+            recreated = requests.post(f"{FASTAPI_URL}/recreate", json=payload)
+            recreated.raise_for_status()
+        elif 'change_lunch_' in call.data:
+            payload = get_user_data(call.message)
+            replace = [current_day * 3 + 1]
+            payload["replace"] = replace
+            payload["menu"] = menu
+            recreated = requests.post(f"{FASTAPI_URL}/recreate", json=payload)
+            recreated.raise_for_status()
+        elif 'change_dinner_' in call.data:
+            payload = get_user_data(call.message)
+            replace = [current_day * 3 + 2]
+            payload["replace"] = replace
+            payload["menu"] = menu
+            recreated = requests.post(f"{FASTAPI_URL}/recreate", json=payload)
+            recreated.raise_for_status()
+        elif 'change_day_' in call.data:
+            payload = get_user_data(call.message)
+            replace = []
+            for i in range(0, 3):
+                replace.append(current_day * 3 + i)
+            payload["replace"] = replace
+            payload["menu"] = menu
+            recreated = requests.post(f"{FASTAPI_URL}/recreate", json=payload)
+            recreated.raise_for_status()
+
+
+
 
         pictures = None
         if current_day == -1:
@@ -453,11 +486,6 @@ def download_image(url, save_as):
     except requests.exceptions.RequestException as e:
         print(f"Failed to download image: {e}")
 
-# def resize_to_height(image, target_height):
-#     width, height = image.size
-#     new_width = int((target_height / height) * width)
-#     resized_image = image.resize((new_width, target_height), Image.Resampling.LANCZOS)
-#     return resized_image
 
 def resize_to_height(image, new_height):
     width, height = image.size
