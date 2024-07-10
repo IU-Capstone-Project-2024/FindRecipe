@@ -5,14 +5,18 @@ import os
 from dotenv import load_dotenv
 import requests
 from telebot import types
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
+from io import BytesIO
+import urllib
+from PIL import Image
 
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 
-bot = telebot.TeleBot(TOKEN, parse_mode=None)
+bot = telebot.TeleBot(TOKEN)
 FASTAPI_URL = os.getenv('FASTAPI')
 
+MIN_DIMENSION = 320
 #### Aliye
 
 user_data = dict()
@@ -53,8 +57,9 @@ def main_page(message, text):
     txt = 'Начать составление'
     itembtn_generate = types.KeyboardButton(txt)
     markup.row(itembtn_generate)
-
-    bot.send_message(message.chat.id, text, parse_mode='html', reply_markup=markup)
+    photo = open('options.JPG', 'rb')
+    bot.send_photo(chat_id=message.chat.id, photo=photo, caption=text, parse_mode='html', reply_markup=markup)
+    # bot.send_message(message.chat.id, text, parse_mode='html', reply_markup=markup)
 
 
 @bot.message_handler(func=lambda message: message.text in ['Начать составление'])
@@ -80,17 +85,20 @@ def choose_param(message, option=None):
     markup.add(products)
 
     markup.add(blacklist)
+    photo = open('options.JPG', 'rb')
     if option:
-        bot.edit_message_text(chat_id=message.chat.id, message_id=message.message_id, text=txt,
+        media = types.InputMediaPhoto(photo, caption=txt)
+        bot.edit_message_media(media=media, chat_id=message.chat.id, message_id=message.message_id,
                               reply_markup=markup)
     else:
-        bot.send_message(message.chat.id, txt, parse_mode='html', reply_markup=markup)
+        bot.send_photo(message.chat.id, photo=photo, caption=txt, parse_mode='html', reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "products")
 def modify_products(call: types.CallbackQuery):
-    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
-                          text='Enter a number - list of products')
+    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+    bot.send_message(chat_id=call.message.chat.id,
+                     text='Enter a number - list of products')
     bot.register_next_step_handler(call.message, process_products_input)
 
 
@@ -105,15 +113,19 @@ def process_products_input(message):
     user_preferences['num_products'] = products
     user_preferences_json = json.dumps(user_preferences)
 
-    user_request = requests.post(f"{FASTAPI_URL}/preferences", params={'chat_id':chat_id, 'data': user_preferences_json})
+    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={'chat_id':str(chat_id), 'data': user_preferences_json})
     user_request.raise_for_status()
     choose_param(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "calories")
 def modify_calories(call: types.CallbackQuery):
-    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id, text='Введи калорийность в ккал')
-    bot.register_next_step_handler(call.message, process_calories_input)
+    bot.delete_message(chat_id=call.message.chat.id, 
+                       message_id=call.message.id)
+    bot.send_message(chat_id=call.message.chat.id,
+                     text='Введи калорийность в ккал')
+    bot.register_next_step_handler(call.message, 
+                                   process_calories_input)
 
 
 def process_calories_input(message):
@@ -128,7 +140,8 @@ def process_calories_input(message):
     user_preferences['calories'] = calories
     user_preferences_json = json.dumps(user_preferences)
 
-    user_request = requests.post(f"{FASTAPI_URL}/preferences", params={'chat_id':chat_id, 'data': user_preferences_json})
+    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
+    
     user_request.raise_for_status()    
     
     choose_param(message)
@@ -136,8 +149,10 @@ def process_calories_input(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == "time")
 def modify_time(call: types.CallbackQuery):
-    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
-                          text='Введи время готовки в минутах')
+    bot.delete_message(chat_id=call.message.chat.id, 
+                       message_id=call.message.id)
+    bot.send_message(chat_id=call.message.chat.id,
+                     text='Введи время готовки в минутах')
     bot.register_next_step_handler(call.message, process_time_input)
 
 
@@ -153,7 +168,7 @@ def process_time_input(message):
     user_preferences['time'] = time
     user_preferences_json = json.dumps(user_preferences)
 
-    user_request = requests.post(f"{FASTAPI_URL}/preferences", params={'chat_id':chat_id, 'data': user_preferences_json})
+    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
     user_request.raise_for_status()   
 
     choose_param(message)
@@ -161,7 +176,9 @@ def process_time_input(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == "spicy")
 def modify_spicy(call: types.CallbackQuery):
-    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
+    bot.delete_message(chat_id=call.message.chat.id, 
+                       message_id=call.message.id)
+    bot.send_message(chat_id=call.message.chat.id,
                           text='Введи число - степень остроты от 1 до 5')
     bot.register_next_step_handler(call.message, process_time_input)
 
@@ -177,7 +194,7 @@ def process_spicy_input(message):
     user_preferences['spicy'] = spicy
     user_preferences_json = json.dumps(user_preferences)
 
-    user_request = requests.post(f"{FASTAPI_URL}/preferences", params={'chat_id':chat_id, 'data': user_preferences_json})
+    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
     user_request.raise_for_status()   
     
     choose_param(message)
@@ -185,7 +202,9 @@ def process_spicy_input(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == "complexity")
 def modify_complexity(call: types.CallbackQuery):
-    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
+    bot.delete_message(chat_id=call.message.chat.id, 
+                       message_id=call.message.id)
+    bot.send_message(chat_id=call.message.chat.id,
                           text='Введи число - сложность блюда от 1 до 5')
     bot.register_next_step_handler(call.message, process_time_input)
 
@@ -202,7 +221,7 @@ def process_complexity_input(message):
     user_preferences['diff'] = complexity
     user_preferences_json = json.dumps(user_preferences)
 
-    user_request = requests.post(f"{FASTAPI_URL}/preferences", params={'chat_id':chat_id, 'data': user_preferences_json})
+    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
     user_request.raise_for_status()   
 
     choose_param(message)
@@ -316,11 +335,28 @@ def get_user_data(message):
     user_preferences = json.loads(json.loads(pref_request.content))
     user_preferences['bad_products'] = ['Картошка']
     return user_preferences
+# =======
+#     payload = {
+#         "bad_products": [
+#             "string"
+#         ],
+#         "calories": 1500,
+#         "pfc": [
+#             0
+#         ],
+#         "time": 120,
+#         "diff": 5,
+#         "spicy": 5,
+#         "num_products": 15
+#     }
+#     return payload
+# >>>>>>> 6e0c0f4e7af484d8d5146fde654d22d6fb460032
 
 
 def format_menu_day(menu, day_index):
     day_menu = menu[day_index]
     day_text = f"День {day_index + 1}:\n"
+    pictures = list()
     for recipe in day_menu:
         day_text += (
             f"- {recipe['name']}\n"
@@ -329,10 +365,13 @@ def format_menu_day(menu, day_index):
             f"  Белки/Жиры/Углеводы: {recipe['pfc'][0]}/{recipe['pfc'][1]}/{recipe['pfc'][2]}\n"
             f"  Ссылка на рецепт: {recipe['link_to_recipe']}\n"
         )
-    return day_text
+        pictures.append(recipe['link_to_image'])
+    return [day_text, pictures]
 
 
 def format_shop_list(shopping_list):
+    if isinstance(shopping_list, str):
+        return shopping_list
     shopping_list_text = "Shopping List:\n"
     for product, quantity in shopping_list.items():
         shopping_list_text += f"- {product}: {quantity}\n"
@@ -385,6 +424,7 @@ def create_navigation_buttons(current_day, mess_id):
 def get_menu(call: types.CallbackQuery):
     try:
         payload = get_user_data(call.message)
+        # payload = {}
         response = requests.post(f"{FASTAPI_URL}/create", json=payload)
         response.raise_for_status()
         data = response.json()
@@ -411,7 +451,9 @@ def get_menu(call: types.CallbackQuery):
         user_response.raise_for_status()
 
         markup = create_navigation_buttons(current_day, mess_id)
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=shopping_list_text, reply_markup=markup)
+        photo = open('list.JPG', 'rb')
+        media = types.InputMediaPhoto(photo, caption=shopping_list_text)
+        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
 
     except requests.exceptions.RequestException as e:
         bot.reply_to(call.message, f"Failed to retrieve menu: {e}")
@@ -432,7 +474,6 @@ def navigate_menu(call: types.CallbackQuery):
         user_response.raise_for_status()
         data = json.loads(json.loads(user_response.content))
         current_day = int(call.data.split('_')[1])
-        # bot.reply_to(call.message, f"The type: {type(data)}, the data: {[data]}")
         menu = data['menu']
         shopping_list = data['shopping_list']
         if 'prev' in call.data and current_day > -1:
@@ -442,17 +483,84 @@ def navigate_menu(call: types.CallbackQuery):
         elif 'list' in call.data:
             send_product_list(call.message)
 
+        pictures = None
         if current_day == -1:
-            text = format_shop_list(shopping_list)
+            text = format_shop_list(data['shopping_list'])
         else:
-            text = format_menu_day(menu, current_day)
+            response = format_menu_day(menu, current_day)
+            text = response[0]
+            pictures = response[1]
 
         markup = create_navigation_buttons(current_day, mess_id)
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text,
-                              reply_markup=markup)
+
+        if pictures:
+            download_image(pictures[0], 'image.jpg')
+            download_image(pictures[1], 'image1.jpg')
+            download_image(pictures[2], 'image2.jpg')
+
+            image1 = Image.open('image.jpg')
+            image2 = Image.open('image1.jpg')
+            image3 = Image.open('image2.jpg')
+
+            height1 = image1.size[1]
+            height2 = image2.size[1]
+            height3 = image3.size[1]
+
+            total_height = min(height1, height2, height3)
+            if height1 > total_height:
+                image1 = resize_to_height(image1, total_height)
+            if height2 > total_height:
+                image2 = resize_to_height(image2, total_height)
+            if height3 > total_height:
+                image3 = resize_to_height(image3, total_height)
+
+            width1 = image1.size[0]
+            width2 = image2.size[0]
+            width3 = image3.size[0]
+
+            total_width = width1 + width2 + width3
+
+            collage = Image.new("RGB", (total_width, total_height), "white")
+
+            collage.paste(image1, (0, 0))
+            collage.paste(image2, (width1, 0))
+            collage.paste(image3, (width1 + width2, 0))
+
+            collage.save("collage.jpg")
+
+
+            photo = open('collage.jpg', 'rb')
+            media = types.InputMediaPhoto(photo, caption=text)
+
+            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
+        else:
+            photo = open('list.JPG', 'rb')
+            media = types.InputMediaPhoto(photo, caption=text)
+            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
+
 
     except requests.exceptions.RequestException as e:
         bot.reply_to(call.message, f"Failed to retrieve menu: {e}.")
+
+def download_image(url, save_as):
+    try:
+        file_path = save_as
+        urllib.request.urlretrieve(url, file_path)
+        print(f"Image successfully downloaded and saved to {file_path}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to download image: {e}")
+
+# def resize_to_height(image, target_height):
+#     width, height = image.size
+#     new_width = int((target_height / height) * width)
+#     resized_image = image.resize((new_width, target_height), Image.Resampling.LANCZOS)
+#     return resized_image
+
+def resize_to_height(image, new_height):
+    width, height = image.size
+    new_width = new_height * width / height
+    img = image.resize((int(new_width), new_height), Image.LANCZOS)
+    return img
 
 
 bot.infinity_polling()
