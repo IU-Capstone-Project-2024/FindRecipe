@@ -27,6 +27,24 @@ def start(message):
         - редактировать черный список\n\
     Все эти функции доступны в виде кнопок''')
 
+
+    user_preferences = {
+        "bad_products": ['Картошка'], 
+        "calories": 2000,
+        "pfc": [],
+        "time": 120,
+        "diff": 5, 
+        "spicy": 2, 
+        "num_products": 15
+    }
+
+    chat_id = message.chat.id
+    user_preferences_json = json.dumps(user_preferences, ensure_ascii=False)
+    # raise Exception(user_preferences_json)
+
+    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
+    user_request.raise_for_status()
+
     main_page(message, text_message)
 
 
@@ -78,7 +96,17 @@ def modify_products(call: types.CallbackQuery):
 
 def process_products_input(message):
     products = message.text
-    user_data['products'] = products
+    chat_id = message.chat.id
+
+    pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
+    pref_request.raise_for_status()
+
+    user_preferences = json.loads(json.loads(pref_request.content))
+    user_preferences['num_products'] = products
+    user_preferences_json = json.dumps(user_preferences)
+
+    user_request = requests.post(f"{FASTAPI_URL}/preferences", params={'chat_id':chat_id, 'data': user_preferences_json})
+    user_request.raise_for_status()
     choose_param(message)
 
 
@@ -90,7 +118,19 @@ def modify_calories(call: types.CallbackQuery):
 
 def process_calories_input(message):
     calories = message.text
-    user_data['calories'] = calories
+
+    chat_id = message.chat.id
+
+    pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
+    pref_request.raise_for_status()
+
+    user_preferences = json.loads(json.loads(pref_request.content))
+    user_preferences['calories'] = calories
+    user_preferences_json = json.dumps(user_preferences)
+
+    user_request = requests.post(f"{FASTAPI_URL}/preferences", params={'chat_id':chat_id, 'data': user_preferences_json})
+    user_request.raise_for_status()    
+    
     choose_param(message)
 
 
@@ -103,7 +143,19 @@ def modify_time(call: types.CallbackQuery):
 
 def process_time_input(message):
     time = message.text
-    user_data['time'] = time
+
+    chat_id = message.chat.id
+
+    pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
+    pref_request.raise_for_status()
+
+    user_preferences = json.loads(json.loads(pref_request.content))
+    user_preferences['time'] = time
+    user_preferences_json = json.dumps(user_preferences)
+
+    user_request = requests.post(f"{FASTAPI_URL}/preferences", params={'chat_id':chat_id, 'data': user_preferences_json})
+    user_request.raise_for_status()   
+
     choose_param(message)
 
 
@@ -116,7 +168,18 @@ def modify_spicy(call: types.CallbackQuery):
 
 def process_spicy_input(message):
     spicy = message.text
-    user_data['spicy'] = spicy
+    chat_id = message.chat.id
+
+    pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
+    pref_request.raise_for_status()
+
+    user_preferences = json.loads(json.loads(pref_request.content))
+    user_preferences['spicy'] = spicy
+    user_preferences_json = json.dumps(user_preferences)
+
+    user_request = requests.post(f"{FASTAPI_URL}/preferences", params={'chat_id':chat_id, 'data': user_preferences_json})
+    user_request.raise_for_status()   
+    
     choose_param(message)
 
 
@@ -129,7 +192,19 @@ def modify_complexity(call: types.CallbackQuery):
 
 def process_complexity_input(message):
     complexity = message.text
-    user_data['complexity'] = complexity
+
+    chat_id = message.chat.id
+
+    pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
+    pref_request.raise_for_status()
+
+    user_preferences = json.loads(json.loads(pref_request.content))
+    user_preferences['diff'] = complexity
+    user_preferences_json = json.dumps(user_preferences)
+
+    user_request = requests.post(f"{FASTAPI_URL}/preferences", params={'chat_id':chat_id, 'data': user_preferences_json})
+    user_request.raise_for_status()   
+
     choose_param(message)
 
 
@@ -233,25 +308,14 @@ def handle_product(call: CallbackQuery):
 ### Ilsiia
 
 def get_user_data(message):
-    payload = {
-        "bad_products": [
-            "string"
-        ],
-        "calories": 2000,
-        "pfc": [
-            0
-        ],
-        "time": 120,
-        "replace": [
-            [
-                True
-            ]
-        ],
-        "diff": 5,
-        "spicy": 0,
-        "num_products": 25
-    }
-    return payload
+    chat_id = message.chat.id
+
+    pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
+    pref_request.raise_for_status()
+    # raise Exception([pref_request.content])
+    user_preferences = json.loads(json.loads(pref_request.content))
+    user_preferences['bad_products'] = ['Картошка']
+    return user_preferences
 
 
 def format_menu_day(menu, day_index):
@@ -343,7 +407,7 @@ def get_menu(call: types.CallbackQuery):
             "data": dt
         }
 
-        user_response = requests.post(f"{FASTAPI_URL}/user", params=user_payload)
+        user_response = requests.post(f"{FASTAPI_URL}/user", json=user_payload)
         user_response.raise_for_status()
 
         markup = create_navigation_buttons(current_day, mess_id)

@@ -29,6 +29,11 @@ class Menu(BaseModel):
     menu: List[List[Recipe]]
 
 
+class Data(BaseModel):
+    chat_id: str 
+    data: str
+
+
 def string_to_list_int(s):  # "[2 4   5 3434]" -> [2, 4, 5, 3434]
     return list(map(int, s[1:len(s) - 1].split()))
 
@@ -433,14 +438,15 @@ def get_preferences(chat_id: str):
 
 
 @app.post("/preferences", response_model=str)
-def send_preferences(chat_id: str, data: str):
+def send_preferences(data: Data):
+    raise Exception([data])
     try:
         client = MongoClient(
             f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
         db = client['findrecipe']
         result = db['preferences'].update_one(
-            {"chat_id": chat_id},
-            {"$set": {"data": data}},
+            {"chat_id": data.chat_id},
+            {"$set": {"data": data.data}},
             upsert=True
         )
         if result.matched_count > 0 or result.upserted_id is not None:
@@ -449,6 +455,8 @@ def send_preferences(chat_id: str, data: str):
             return "Update failed"
     except Exception as e:
         raise "FAILED"
+
+
 
 # {'_id': ObjectId('66852e3e82d561d774654c7d'), 'ID': 191, 'Name':
 # 'Быстрые маринованные вешенки', 'Breakfast': 0, 'Cooking time in minutes': 160,
