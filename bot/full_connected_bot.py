@@ -187,7 +187,7 @@ def modify_spicy(call: types.CallbackQuery):
                        message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
                           text='Введи число - степень остроты от 1 до 5')
-    bot.register_next_step_handler(call.message, process_time_input)
+    bot.register_next_step_handler(call.message, process_spicy_input)
 
 
 def process_spicy_input(message):
@@ -213,7 +213,7 @@ def modify_complexity(call: types.CallbackQuery):
                        message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
                           text='Введи число - сложность блюда от 1 до 5')
-    bot.register_next_step_handler(call.message, process_time_input)
+    bot.register_next_step_handler(call.message, process_complexity_input)
 
 
 def process_complexity_input(message):
@@ -340,7 +340,8 @@ def get_user_data(message):
     pref_request.raise_for_status()
     # raise Exception([pref_request.content])
     user_preferences = json.loads(json.loads(pref_request.content))
-    user_preferences['bad_products'] = ['Картошка']
+    # user_preferences['bad_products'] = ['Картошка']
+    user_preferences['bad_products'] = []
     return user_preferences
 # =======
 #     payload = {

@@ -2,7 +2,6 @@ import fastapi
 from pydantic import BaseModel
 from typing import List, Dict
 from pymongo import MongoClient
-import time as ttt
 import random
 
 MONGO_HOST = 'mongo_db'
