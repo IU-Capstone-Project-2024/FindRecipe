@@ -21,19 +21,9 @@ MIN_DIMENSION = 320
 
 user_data = dict()
 
-
-@bot.message_handler(commands=['start', 'help'])
-def start(message):
-    text_message = ('''Привет! Я помогу тебе составить рацион на неделю, исходя из твоих предпочтений.\nВот, что можно сделать:\n\
-        - создать новое меню\n\
-        - редактировать существующее меню\n\
-        - посмотреть черный список\n\
-        - редактировать черный список\n\
-    Все эти функции доступны в виде кнопок''')
-
-
+def set_initial_preferences(message):
     user_preferences = {
-        "bad_products": ['Картошка'], 
+        "bad_products": [], 
         "calories": 2000,
         "pfc": [],
         "time": 120,
@@ -48,6 +38,19 @@ def start(message):
 
     user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
     user_request.raise_for_status()
+
+
+
+@bot.message_handler(commands=['start', 'help'])
+def start(message):
+    text_message = ('''Привет! Я помогу тебе составить рацион на неделю, исходя из твоих предпочтений.\nВот, что можно сделать:\n\
+        - создать новое меню\n\
+        - редактировать существующее меню\n\
+        - посмотреть черный список\n\
+        - редактировать черный список\n\
+    Все эти функции доступны в виде кнопок''')
+
+    set_initial_preferences(message)
 
     main_page(message, text_message)
 
@@ -70,6 +73,10 @@ def start_generating(message):
 
 
 def choose_param(message, option=None):
+    pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': message.chat.id})
+    if 'not found' in json.loads(pref_request.content):
+        set_initial_preferences(message)
+
     txt = 'Выбери параметр, чтобы изменить его'
     markup = InlineKeyboardMarkup()
     calories = InlineKeyboardButton('калорийность', callback_data='calories')
