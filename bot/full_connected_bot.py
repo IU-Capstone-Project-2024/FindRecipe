@@ -327,30 +327,30 @@ def handle_product(call: CallbackQuery):
 ### Ilsiia
 
 def get_user_data(message):
-    chat_id = message.chat.id
+    # chat_id = message.chat.id
+    #
+    # pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
+    # pref_request.raise_for_status()
+    # # raise Exception([pref_request.content])
+    # user_preferences = json.loads(json.loads(pref_request.content))
+    # user_preferences['bad_products'] = ['Картошка']
+    # return user_preferences
 
-    pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
-    pref_request.raise_for_status()
-    # raise Exception([pref_request.content])
-    user_preferences = json.loads(json.loads(pref_request.content))
-    user_preferences['bad_products'] = ['Картошка']
-    return user_preferences
-# =======
-#     payload = {
-#         "bad_products": [
-#             "string"
-#         ],
-#         "calories": 1500,
-#         "pfc": [
-#             0
-#         ],
-#         "time": 120,
-#         "diff": 5,
-#         "spicy": 5,
-#         "num_products": 15
-#     }
-#     return payload
-# >>>>>>> 6e0c0f4e7af484d8d5146fde654d22d6fb460032
+    payload = {
+        "bad_products": [
+            "string"
+        ],
+        "calories": 1500,
+        "pfc": [
+            0
+        ],
+        "time": 120,
+        "diff": 5,
+        "spicy": 5,
+        "num_products": 15
+    }
+    return payload
+
 
 
 def format_menu_day(menu, day_index):
@@ -423,8 +423,8 @@ def create_navigation_buttons(current_day, mess_id):
 @bot.callback_query_handler(func=lambda call: call.data == "generate")
 def get_menu(call: types.CallbackQuery):
     try:
-        payload = get_user_data(call.message)
-        # payload = {}
+        # payload = get_user_data(call.message)
+        payload = {}
         response = requests.post(f"{FASTAPI_URL}/create", json=payload)
         response.raise_for_status()
         data = response.json()
@@ -482,43 +482,48 @@ def navigate_menu(call: types.CallbackQuery):
             current_day += 1
         elif 'list' in call.data:
             send_product_list(call.message)
-        elif 'change_breakfast_' in call.data:
-            payload = get_user_data(call.message)
-            replace = [current_day * 3]
-            payload["replace"] = replace
-            payload["menu"] = [menu, shopping_list]
-            recreated = requests.post(f"{FASTAPI_URL}/recreate", json=payload)
-            recreated.raise_for_status()
-        elif 'change_lunch_' in call.data:
-            payload = get_user_data(call.message)
-            replace = [current_day * 3 + 1]
-            payload["replace"] = replace
-            payload["menu"] = menu
-            recreated = requests.post(f"{FASTAPI_URL}/recreate", json=payload)
-            recreated.raise_for_status()
-        elif 'change_dinner_' in call.data:
-            payload = get_user_data(call.message)
-            replace = [current_day * 3 + 2]
-            payload["replace"] = replace
-            payload["menu"] = menu
-            recreated = requests.post(f"{FASTAPI_URL}/recreate", json=payload)
-            recreated.raise_for_status()
-        elif 'change_day_' in call.data:
-            payload = get_user_data(call.message)
-            replace = []
-            for i in range(0, 3):
-                replace.append(current_day * 3 + i)
-            payload["replace"] = replace
-            payload["menu"] = menu
-            recreated = requests.post(f"{FASTAPI_URL}/recreate", json=payload)
+        elif 'change_' in call.data:
+            # payload = get_user_data(call.message)
+            payload = {}
+            if 'change_breakfast_' in call.data:
+                payload["replace"] = [current_day * 3]
+            elif 'change_lunch_' in call.data:
+                payload["replace"] = [current_day * 3 + 1]
+            elif 'change_dinner_' in call.data:
+                payload["replace"] = [current_day * 3 + 2]
+            elif 'change_day_' in call.data:
+                replace = []
+                for i in range(0, 3):
+                    replace.append(current_day * 3 + i)
+                payload["replace"] = replace
+
+            payload["menu"] = {"menu": menu, "shopping_list": shopping_list}
+            recreated = requests.post(f"{FASTAPI_URL}/recreate", params=payload)
             recreated.raise_for_status()
 
+            data = recreated.json()
+            shopping_list = data['list_of_products']
+            menu = data['menu']
 
+            dt = {
+                "menu": menu,
+                "shopping_list": shopping_list_text
+            }
+            dt = json.dumps(dt)
+
+            user_payload = {
+                "chat_id": chat_id,
+                "mess_id": mess_id,
+                "data": dt
+            }
+
+            user_response = requests.post(f"{FASTAPI_URL}/user", json=user_payload)
+            user_response.raise_for_status()
 
 
         pictures = None
         if current_day == -1:
-            text = format_shop_list(data['shopping_list'])
+            text = format_shop_list(shopping_list)
         else:
             response = format_menu_day(menu, current_day)
             text = response[0]
