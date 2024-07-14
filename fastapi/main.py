@@ -374,13 +374,8 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
             if len(menu[ind][i]) != 7:
                 menu[ind][i] = {
                     "id": menu[ind][i]["ID"],
-                    # "name": menu[ind][i]["Name"] + '\n' + str(find_names_of_products(string_to_list_int(i["Ingredients"]))) ,
-                    "name": str(menu[ind][i]["Name"]) + "\n" + str(
-                        find_names_of_products(string_to_list_int(menu[ind][i]["Ingredients"]))),
-                    # "name": menu[ind][i]["Name"] + "\n" + str(menu[ind][i]["recipeCalories"]),
-                    # "name": menu[ind][i]["Name"],
+                    "name": str(menu[ind][i]["Name"]),
                     "link_to_recipe": menu[ind][i]["URL"],
-                    # "link_to_recipe": menu[ind][i]["Picture URL"],
                     "link_to_image": menu[ind][i]["Picture URL"],
                     "time": menu[ind][i]["Cooking time in minutes"],
                     "calories": menu[ind][i]["Calories"],
@@ -396,7 +391,7 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
     list_of_products = get_list_of_products(list(db['recipes'].find({"ID": {"$in": ids}})))
 
     for i in list_of_products:
-        list_of_products[i] = str((list_of_products[i][0], list_of_products[i][1]))
+        list_of_products[i] = str(int(list_of_products[i][0])) + " грамм"
 
     response["list_of_products"] = list_of_products
     return response
