@@ -262,7 +262,7 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
     for i in recipes:
         for j in menu:
             for k in range(len(j)):
-                if "id" in j[k] and j[k]["id"] == i["ID"]:
+                if j[k] and "id" in j[k] and j[k]["id"] == i["ID"]:
                     j[k] = i
                     break
 
