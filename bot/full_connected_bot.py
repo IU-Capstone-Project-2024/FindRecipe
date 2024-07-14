@@ -481,10 +481,7 @@ def navigate_menu(call: types.CallbackQuery):
             elif 'change-dinner_' in call.data:
                 payload["replace"] = [current_day * 3 + 2]
             elif 'change-day_' in call.data:
-                replace = []
-                for i in range(0, 3):
-                    replace.append(current_day * 3 + i)
-                payload["replace"] = replace
+                payload["replace"] = [current_day * 3 + i for i in range(0, 3)]
 
             payload["menu"] = {"shopping_list": shopping_list, "menu": menu}
             recreated = requests.post(f"{FASTAPI_URL}/recreate", json=payload)
@@ -496,13 +493,13 @@ def navigate_menu(call: types.CallbackQuery):
 
             dt = {
                 "menu": menu,
-                "shopping_list": shopping_list_text
+                "shopping_list": shopping_list
             }
             dt = json.dumps(dt)
 
             user_payload = {
-                "chat_id": chat_id,
-                "mess_id": mess_id,
+                "chat_id": str(chat_id),
+                "mess_id": str(mess_id),
                 "data": dt
             }
 
