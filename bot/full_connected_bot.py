@@ -352,8 +352,8 @@ def format_menu_day(menu, day_index):
         day_text += (
             f"- {recipe['name']}\n"
             f"  Время готовки: {recipe['time']} минут\n"
-            f"  Калории: {recipe['calories']}\n"
-            f"  Белки/Жиры/Углеводы: {recipe['pfc'][0]}/{recipe['pfc'][1]}/{recipe['pfc'][2]}\n"
+            f"  Калории: {round(float(recipe['calories']))}\n"
+            f"  Белки/Жиры/Углеводы: {round(float(recipe['pfc'][0]))}/{round(float(recipe['pfc'][1]))}/{round(float(recipe['pfc'][2]))}\n"
             f"  Ссылка на рецепт: {recipe['link_to_recipe']}\n"
         )
         pictures.append(recipe['link_to_image'])
