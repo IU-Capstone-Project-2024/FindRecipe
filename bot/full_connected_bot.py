@@ -21,19 +21,9 @@ MIN_DIMENSION = 320
 
 user_data = dict()
 
-
-@bot.message_handler(commands=['start', 'help'])
-def start(message):
-    text_message = ('''Привет! Я помогу тебе составить рацион на неделю, исходя из твоих предпочтений.\nВот, что можно сделать:\n\
-        - создать новое меню\n\
-        - редактировать существующее меню\n\
-        - посмотреть черный список\n\
-        - редактировать черный список\n\
-    Все эти функции доступны в виде кнопок''')
-
-
+def set_initial_preferences(message):
     user_preferences = {
-        "bad_products": ['Картошка'], 
+        "bad_products": [], 
         "calories": 2000,
         "pfc": [],
         "time": 120,
@@ -48,6 +38,19 @@ def start(message):
 
     user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
     user_request.raise_for_status()
+
+
+
+@bot.message_handler(commands=['start', 'help'])
+def start(message):
+    text_message = ('''Привет! Я помогу тебе составить рацион на неделю, исходя из твоих предпочтений.\nВот, что можно сделать:\n\
+        - создать новое меню\n\
+        - редактировать существующее меню\n\
+        - посмотреть черный список\n\
+        - редактировать черный список\n\
+    Все эти функции доступны в виде кнопок''')
+
+    set_initial_preferences(message)
 
     main_page(message, text_message)
 
@@ -70,6 +73,10 @@ def start_generating(message):
 
 
 def choose_param(message, option=None):
+    pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': message.chat.id})
+    if 'not found' in json.loads(pref_request.content):
+        set_initial_preferences(message)
+
     txt = 'Выбери параметр, чтобы изменить его'
     markup = InlineKeyboardMarkup()
     calories = InlineKeyboardButton('калорийность', callback_data='calories')
@@ -180,7 +187,7 @@ def modify_spicy(call: types.CallbackQuery):
                        message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
                           text='Введи число - степень остроты от 1 до 5')
-    bot.register_next_step_handler(call.message, process_time_input)
+    bot.register_next_step_handler(call.message, process_spicy_input)
 
 
 def process_spicy_input(message):
@@ -206,7 +213,7 @@ def modify_complexity(call: types.CallbackQuery):
                        message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
                           text='Введи число - сложность блюда от 1 до 5')
-    bot.register_next_step_handler(call.message, process_time_input)
+    bot.register_next_step_handler(call.message, process_complexity_input)
 
 
 def process_complexity_input(message):
@@ -351,6 +358,32 @@ def get_user_data(message):
     }
     return payload
 
+<<<<<<< HEAD
+=======
+    pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
+    pref_request.raise_for_status()
+    # raise Exception([pref_request.content])
+    user_preferences = json.loads(json.loads(pref_request.content))
+    # user_preferences['bad_products'] = ['Картошка']
+    user_preferences['bad_products'] = []
+    return user_preferences
+# =======
+#     payload = {
+#         "bad_products": [
+#             "string"
+#         ],
+#         "calories": 1500,
+#         "pfc": [
+#             0
+#         ],
+#         "time": 120,
+#         "diff": 5,
+#         "spicy": 5,
+#         "num_products": 15
+#     }
+#     return payload
+# >>>>>>> 6e0c0f4e7af484d8d5146fde654d22d6fb460032
+>>>>>>> 2f4a7d8e61095de6b2f01b75f6ad768ca458dfde
 
 
 def format_menu_day(menu, day_index):
