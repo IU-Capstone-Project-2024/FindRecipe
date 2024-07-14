@@ -12,6 +12,8 @@ MONGO_PASS = "password"
 
 app = fastapi.FastAPI()
 
+ORDER = list(map(lambda x: x.strip(), open("order_of_products.txt").readlines()))
+
 
 class Recipe(BaseModel):
     id: int
@@ -211,19 +213,20 @@ def get_menu(filters: FilterCreateMenu = FilterCreateMenu()):
 
 @app.post("/recreate", response_model=Menu)
 def recreate_and_get_menu(filters: FilterRecreateMenu):
-    menu = filters.menu
+    menu = filters.menu["menu"]
 
     def get_list_of_products(recipes: list):
         list_of_products = {}
         for recipe in recipes:
-            ings = find_names_of_products(string_to_list_int(recipe["Ingredients"]))
-            weights = string_to_list_float(recipe["Weights"])
-            for id in range(len(ings)):
-                if ings[id] in list_of_products:
-                    list_of_products[ings[id]][0] += weights[id]
-                    list_of_products[ings[id]][1] += 1
-                else:
-                    list_of_products[ings[id]] = [weights[id], 1]
+            if recipe is not None:
+                ings = find_names_of_products(string_to_list_int(recipe["Ingredients"]))
+                weights = string_to_list_float(recipe["Weights"])
+                for id in range(len(ings)):
+                    if ings[id] in list_of_products:
+                        list_of_products[ings[id]][0] += weights[id]
+                        list_of_products[ings[id]][1] += 1
+                    else:
+                        list_of_products[ings[id]] = [weights[id], 1]
         return list_of_products
 
     def find_names_of_products(products_ids: List[int]):
@@ -240,35 +243,60 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
         ingredients[i["ID"]] = i["Ingredients"]
 
     list_bad_recipes_id = []
-    for i in menu["menu"]:
+    for i in menu:
         for recipe in i:
             list_bad_recipes_id.append(recipe["id"])
 
     if filters.replace:
         for num in filters.replace:
             i, j = num // 3, num % 3
-            menu["menu"][i][j] = None
+            menu[i][j] = None
 
     ids = []
-    for i in menu["menu"]:
+    for i in menu:
         for recipe in i:
             if recipe:
                 ids.append(recipe["id"])
     recipes = list(db['recipes'].find({"ID": {"$in": ids}}))
+
+    for i in recipes:
+        for j in menu:
+            for k in range(len(j)):
+                if "id" in j[k] and j[k]["id"] == i["ID"]:
+                    j[k] = i
+                    break
+
     list_of_products = list(get_list_of_products(recipes).items())  # [("Name", [weight, count]), (...), (...)]
 
     list_of_products.sort(key=lambda x: x[1][1] * 100000 + x[1][0], reverse=True)
     if not filters.bad_products:
         filters.bad_products = []
-    filters.bad_products += [i[0] for i in list_of_products[filters.num_products:]]
     list_of_products = [i[0] for i in list_of_products[:filters.num_products]]
-
-    for i in menu["menu"]:
-        for recipe in range(len(i)):
-            for prod in i[recipe]:
-                if prod not in list_of_products:
+    for counter in range(5, -1, -1):
+        for i in menu:
+            for recipe in range(len(i)):
+                cn = counter
+                if i[recipe]:
+                    for prod in find_names_of_products(string_to_list_int(i[recipe]["Ingredients"])):
+                        if prod not in list_of_products:
+                            cn -= 1
+                if cn < 0:
                     i[recipe] = None
-                    break
+        tmp_array = []
+        for i in menu:
+            for recipe in i:
+                tmp_array += [recipe]
+        list_of_products = list(get_list_of_products(tmp_array).items())
+        list_of_products.sort(key=lambda x: x[1][1] * 100000 + x[1][0], reverse=True)
+        if len(list_of_products) <= filters.num_products:
+            list_of_products = [i[0] for i in list_of_products[:filters.num_products]]
+            break
+        list_of_products = [i[0] for i in list_of_products[:filters.num_products]]
+    cn = 0
+    while len(list_of_products) < filters.num_products:
+        if ORDER[cn] not in filters.bad_products + list_of_products:
+            list_of_products += [ORDER[cn]]
+        cn += 1
 
     response = {
         "list_of_products": None,
@@ -282,11 +310,8 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
         "Spicy": {"$lte": filters.spicy}
     }
     recipes = list(db['recipes'].find(filter_for_query))
-
     recipes = list(filter(
-        lambda x: all([(i in list_of_products) for i, j in
-                       zip(find_names_of_products(string_to_list_int(x["Ingredients"])),
-                           string_to_list_float(x["Weights"]))]),
+        lambda x: all([(i in list_of_products) for i in find_names_of_products(string_to_list_int(x["Ingredients"]))]),
         recipes))
 
     for recipe in recipes:
@@ -296,12 +321,9 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
     z = 0.25 * filters.calories
     o = 0.4 * filters.calories
     u = 0.35 * filters.calories
-
     recipes_z = sorted(list(filter(lambda x: x["Breakfast"] == 1, recipes)), key=lambda x: abs(z - x["recipeCalories"]))
     recipes_o = sorted(list(filter(lambda x: x["Breakfast"] == 0, recipes)), key=lambda x: abs(o - x["recipeCalories"]))
-    # raise Exception(len(list_of_products), len(recipes),  len(recipes_o), len(recipes_z))
 
-    menu = menu["menu"]
     cn_z = 0
     cn_o = 0
     cn_u = 0
@@ -312,10 +334,6 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
             cn_o += 1
         if not menu[i][2]:
             cn_u += 1
-    if len(recipes_z) < cn_z:
-        recipes_z += recipes_o
-    if len(recipes_o) < cn_o + cn_u:
-        recipes_o += recipes_z
 
     recipes_delta50 = list(filter(lambda x: abs(z - x["recipeCalories"]) <= 50, recipes_z))
     pool = None
@@ -354,7 +372,7 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
     for ind in range(7):
         for i in range(3):
             if len(menu[ind][i]) != 7:
-                recipe_for_bot = {
+                menu[ind][i] = {
                     "id": menu[ind][i]["ID"],
                     # "name": menu[ind][i]["Name"] + '\n' + str(find_names_of_products(string_to_list_int(i["Ingredients"]))) ,
                     "name": str(menu[ind][i]["Name"]) + "\n" + str(
@@ -368,21 +386,19 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
                     "calories": menu[ind][i]["Calories"],
                     "pfc": [menu[ind][i]["Protein"], menu[ind][i]["Fat"], menu[ind][i]["Carbs"]]
                 }
-                menu[ind][i] = recipe_for_bot
     response["menu"] = menu
 
     ids = []
     for i in menu:
         for j in i:
             ids.append(j["id"])
-    recipes = list(db['recipes'].find({"ID": {"$in": ids}}))
-    list_of_products = get_list_of_products(recipes)
+
+    list_of_products = get_list_of_products(list(db['recipes'].find({"ID": {"$in": ids}})))
 
     for i in list_of_products:
         list_of_products[i] = str((list_of_products[i][0], list_of_products[i][1]))
 
     response["list_of_products"] = list_of_products
-
     return response
 
 
