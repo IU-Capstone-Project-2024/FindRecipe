@@ -79,13 +79,13 @@ def choose_param(message, option=None):
 
     txt = 'Выбери параметр, чтобы изменить его'
     markup = InlineKeyboardMarkup()
-    calories = InlineKeyboardButton('калорийность', callback_data='calories')
-    time = InlineKeyboardButton('время готовки', callback_data='time')
-    products = InlineKeyboardButton('количество продуктов', callback_data='products')
-    spicy = InlineKeyboardButton('острота', callback_data='spicy')
-    complexity = InlineKeyboardButton('сложноть', callback_data='complexity')
-    blacklist = InlineKeyboardButton('черный список', callback_data='blacklist')
-    generate = InlineKeyboardButton('составить меню', callback_data='generate')
+    calories = InlineKeyboardButton('⚖️ калорийность', callback_data='calories')
+    time = InlineKeyboardButton('⏰ время готовки', callback_data='time')
+    products = InlineKeyboardButton('🛒 количество продуктов', callback_data='products')
+    spicy = InlineKeyboardButton('🌶 острота', callback_data='spicy')
+    complexity = InlineKeyboardButton('📊 сложноть', callback_data='complexity')
+    blacklist = InlineKeyboardButton('❌ черный список', callback_data='blacklist')
+    generate = InlineKeyboardButton('🍽 составить меню', callback_data='generate')
     markup.add(generate)
     markup.row(calories, time)
     markup.row(spicy, complexity)
@@ -346,15 +346,22 @@ def get_user_data(message):
 
 def format_menu_day(menu, day_index):
     day_menu = menu[day_index]
-    day_text = f"День {day_index + 1}:\n"
+    day_text = ""
     pictures = list()
-    for recipe in day_menu:
+    for i in range(0, 3):
+        recipe = day_menu[i]
+        if i == 0:
+            day_text += f"🍳Завтрак:\n"
+        elif i == 1:
+            day_text += f"🍲Обед:\n"
+        elif i == 2:
+            day_text += f"🍝Ужин:\n"
         day_text += (
-            f"- {recipe['name']}\n"
+            f"  {recipe['name']}\n"
             f"  Время готовки: {recipe['time']} минут\n"
             f"  Калории: {round(float(recipe['calories']))}\n"
-            f"  Белки/Жиры/Углеводы: {round(float(recipe['pfc'][0]))}/{round(float(recipe['pfc'][1]))}/{round(float(recipe['pfc'][2]))}\n"
-            f"  Ссылка на рецепт: {recipe['link_to_recipe']}\n"
+            f"  БЖУ: {round(float(recipe['pfc'][0]))}/{round(float(recipe['pfc'][1]))}/{round(float(recipe['pfc'][2]))}\n"
+            f"  Ссылка на рецепт: {recipe['link_to_recipe']}\n\n"
         )
         pictures.append(recipe['link_to_image'])
     return [day_text, pictures]
@@ -363,29 +370,29 @@ def format_menu_day(menu, day_index):
 def format_shop_list(shopping_list):
     if isinstance(shopping_list, str):
         return shopping_list
-    shopping_list_text = "Shopping List:\n"
+    shopping_list_text = "Список покупок:\n"
     for product, quantity in shopping_list.items():
         shopping_list_text += f"- {product}: {quantity}\n"
     return shopping_list_text
 
 
 def create_navigation_buttons(current_day, mess_id):
-    days = ['Список покупок', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+    days = ['📝Список покупок', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
     markup = InlineKeyboardMarkup()
 
     if current_day == -1:
         next_day = InlineKeyboardButton(days[1], callback_data=f"next_{current_day}_{mess_id}")
         markup.add(next_day)
-        blacklist = InlineKeyboardButton("Добавить в черный список", callback_data=f"list_{current_day}")
+        blacklist = InlineKeyboardButton("❌ Добавить в черный список", callback_data=f"list_{current_day}")
         markup.add(blacklist)
     elif current_day == 6:
         prev_day = InlineKeyboardButton(days[current_day], callback_data=f"prev_{current_day}")
         markup.add(prev_day)
-        change_breakfast = InlineKeyboardButton("Заменить завтрак",
+        change_breakfast = InlineKeyboardButton("🥞 Заменить завтрак",
                                                 callback_data=f"change-breakfast_{current_day}")
-        change_lunch = InlineKeyboardButton("Заменить обед", callback_data=f"change-lunch_{current_day}")
-        change_dinner = InlineKeyboardButton("Заменить ужин", callback_data=f"change-dinner_{current_day}")
-        change_day = InlineKeyboardButton("Заменить день", callback_data=f"change-day_{current_day}")
+        change_lunch = InlineKeyboardButton("🥘 Заменить обед", callback_data=f"change-lunch_{current_day}")
+        change_dinner = InlineKeyboardButton("🥙 Заменить ужин", callback_data=f"change-dinner_{current_day}")
+        change_day = InlineKeyboardButton("🍱 Заменить день", callback_data=f"change-day_{current_day}")
 
         markup.add(change_breakfast)
         markup.add(change_lunch)
@@ -395,17 +402,17 @@ def create_navigation_buttons(current_day, mess_id):
         prev_day = InlineKeyboardButton(days[current_day], callback_data=f"prev_{current_day}")
         next_day = InlineKeyboardButton(days[current_day + 2], callback_data=f"next_{current_day}")
         markup.add(prev_day, next_day)
-        change_breakfast = InlineKeyboardButton("Заменить завтрак",
+        change_breakfast = InlineKeyboardButton("🥞 Заменить завтрак",
                                                 callback_data=f"change-breakfast_{current_day}")
-        change_lunch = InlineKeyboardButton("Заменить обед", callback_data=f"change-lunch_{current_day}")
-        change_dinner = InlineKeyboardButton("Заменить ужин", callback_data=f"change-dinner_{current_day}")
-        change_day = InlineKeyboardButton("Заменить день", callback_data=f"change-day_{current_day}")
+        change_lunch = InlineKeyboardButton("🥘 Заменить обед", callback_data=f"change-lunch_{current_day}")
+        change_dinner = InlineKeyboardButton("🥙 Заменить ужин", callback_data=f"change-dinner_{current_day}")
+        change_day = InlineKeyboardButton("🍱 Заменить день", callback_data=f"change-day_{current_day}")
 
         markup.add(change_breakfast)
         markup.add(change_lunch)
         markup.add(change_dinner)
         markup.add(change_day)
-    main_menu = InlineKeyboardButton("Главное меню", callback_data=f"main_menu_{current_day}")
+    main_menu = InlineKeyboardButton("🏁 Главное меню", callback_data=f"main_menu_{current_day}")
     markup.add(main_menu)
 
     return markup
@@ -554,7 +561,7 @@ def navigate_menu(call: types.CallbackQuery):
 
 
             photo = open('collage.jpg', 'rb')
-            media = types.InputMediaPhoto(photo, caption=text)
+            media = types.InputMediaPhoto(photo, caption=text, parse_mode='Markdown')
 
             bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
         else:
