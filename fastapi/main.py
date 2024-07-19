@@ -84,6 +84,8 @@ def get_menu(filters: FilterCreateMenu = FilterCreateMenu()):
         for recipe in recipes:
             ings = find_names_of_products(string_to_list_int(recipe["Ingredients"]))
             weights = string_to_list_float(recipe["Weights"])
+            for i in range(len(weights)):
+                weights[i] /= recipe["Servings"]
             for id in range(len(ings)):
                 if ings[id] in list_of_products:
                     list_of_products[ings[id]][0] += weights[id]
@@ -221,6 +223,8 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
             if recipe is not None:
                 ings = find_names_of_products(string_to_list_int(recipe["Ingredients"]))
                 weights = string_to_list_float(recipe["Weights"])
+                for i in range(len(weights)):
+                    weights[i] /= recipe["Servings"]
                 for id in range(len(ings)):
                     if ings[id] in list_of_products:
                         list_of_products[ings[id]][0] += weights[id]
