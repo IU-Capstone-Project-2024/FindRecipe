@@ -105,7 +105,7 @@ def choose_param(message, option=None):
 def modify_products(call: types.CallbackQuery):
     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
-                     text='Enter a number - list of products')
+                     text='Введите количество продуктов на неделю')
     bot.register_next_step_handler(call.message, process_products_input)
 
 
@@ -357,11 +357,10 @@ def format_menu_day(menu, day_index):
         elif i == 2:
             day_text += f"🍝Ужин:\n"
         day_text += (
-            f"  {recipe['name']}\n"
+            f"  [{recipe['name']}]({recipe['link_to_recipe']})\n"
             f"  Время готовки: {recipe['time']} минут\n"
             f"  Калории: {round(float(recipe['calories']))}\n"
-            f"  БЖУ: {round(float(recipe['pfc'][0]))}/{round(float(recipe['pfc'][1]))}/{round(float(recipe['pfc'][2]))}\n"
-            f"  Ссылка на рецепт: {recipe['link_to_recipe']}\n\n"
+            f"  БЖУ: {round(float(recipe['pfc'][0]))}/{round(float(recipe['pfc'][1]))}/{round(float(recipe['pfc'][2]))}\n\n"
         )
         pictures.append(recipe['link_to_image'])
     return [day_text, pictures]
@@ -372,7 +371,7 @@ def format_shop_list(shopping_list):
         return shopping_list
     shopping_list_text = "Список покупок:\n"
     for product, quantity in shopping_list.items():
-        shopping_list_text += f"- {product}: {quantity}\n"
+        shopping_list_text += f"◌ *{product}:*  {quantity}\n"
     return shopping_list_text
 
 
@@ -449,7 +448,7 @@ def get_menu(call: types.CallbackQuery):
 
         markup = create_navigation_buttons(current_day, mess_id)
         photo = open('list.JPG', 'rb')
-        media = types.InputMediaPhoto(photo, caption=shopping_list_text)
+        media = types.InputMediaPhoto(photo, caption=shopping_list_text, parse_mode='Markdown')
         bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
 
     except requests.exceptions.RequestException as e:
@@ -566,7 +565,7 @@ def navigate_menu(call: types.CallbackQuery):
             bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
         else:
             photo = open('list.JPG', 'rb')
-            media = types.InputMediaPhoto(photo, caption=text)
+            media = types.InputMediaPhoto(photo, caption=text, parse_mode='Markdown')
             bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
 
 
