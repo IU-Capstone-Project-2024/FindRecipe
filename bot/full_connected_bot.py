@@ -524,40 +524,7 @@ def navigate_menu(call: types.CallbackQuery):
         markup = create_navigation_buttons(current_day, mess_id)
 
         if pictures:
-            download_image(pictures[0], 'image.jpg')
-            download_image(pictures[1], 'image1.jpg')
-            download_image(pictures[2], 'image2.jpg')
-
-            image1 = Image.open('image.jpg')
-            image2 = Image.open('image1.jpg')
-            image3 = Image.open('image2.jpg')
-
-            height1 = image1.size[1]
-            height2 = image2.size[1]
-            height3 = image3.size[1]
-
-            total_height = min(height1, height2, height3)
-            if height1 > total_height:
-                image1 = resize_to_height(image1, total_height)
-            if height2 > total_height:
-                image2 = resize_to_height(image2, total_height)
-            if height3 > total_height:
-                image3 = resize_to_height(image3, total_height)
-
-            width1 = image1.size[0]
-            width2 = image2.size[0]
-            width3 = image3.size[0]
-
-            total_width = width1 + width2 + width3
-
-            collage = Image.new("RGB", (total_width, total_height), "white")
-
-            collage.paste(image1, (0, 0))
-            collage.paste(image2, (width1, 0))
-            collage.paste(image3, (width1 + width2, 0))
-
-            collage.save("collage.jpg")
-
+            collage(pictures)
 
             photo = open('collage.jpg', 'rb')
             media = types.InputMediaPhoto(photo, caption=text, parse_mode='Markdown')
@@ -586,6 +553,117 @@ def resize_to_height(image, new_height):
     new_width = new_height * width / height
     img = image.resize((int(new_width), new_height), Image.LANCZOS)
     return img
+
+def resize_to_width(image, new_width):
+    width, height = image.size
+    new_height = new_width * height / width
+    img = image.resize((new_width, int(new_height)), Image.LANCZOS)
+    return img
+
+def count(sizes, value):
+    count = 0
+    for i in range(0, 3):
+        if sizes[i][0] == value:
+            count += 1
+    return count
+
+
+def size_picture(width, height):
+    if width > height:
+        return 0
+    elif height > width or height == width:
+        return 1
+
+def collage(pictures):
+    download_image(pictures[0], 'image1.jpg')
+    download_image(pictures[1], 'image2.jpg')
+    download_image(pictures[2], 'image3.jpg')
+
+    image1 = Image.open('image1.jpg')
+    image2 = Image.open('image2.jpg')
+    image3 = Image.open('image3.jpg')
+
+    width1, height1 = image1.size
+    width2, height2 = image2.size
+    width3, height3 = image3.size
+
+    sizes = [(size_picture(width1, height1), image1), (size_picture(width2, height2), image2),
+             (size_picture(width3, height3), image3)]
+    sizes.sort(key=lambda x: x[0])
+
+    if count(sizes, 0) == 3 or count(sizes, 0) == 2:
+        total_width = min(width1, width2, width3)
+        if total_width < width1:
+            image1 = resize_to_width(image1, total_width)
+        if total_width < width2:
+            image2 = resize_to_width(image2, total_width)
+        if total_width < width3:
+            image3 = resize_to_width(image3, total_width)
+
+        height1 = image1.size[1]
+        height2 = image2.size[1]
+        height3 = image3.size[1]
+
+        total_height = height1 + height2 + height3
+
+        collage = Image.new("RGB", (total_width, total_height), "white")
+
+        collage.paste(image1, (0, 0))
+        collage.paste(image2, (0, height1))
+        collage.paste(image3, (0, height1 + height2))
+        collage.save("collage.jpg")
+
+    elif count(sizes, 1) == 3:
+        total_height = min(height1, height2, height3)
+        if height1 > total_height:
+            image1 = resize_to_height(image1, total_height)
+        if height2 > total_height:
+            image2 = resize_to_height(image2, total_height)
+        if height3 > total_height:
+            image3 = resize_to_height(image3, total_height)
+
+        width1 = image1.size[0]
+        width2 = image2.size[0]
+        width3 = image3.size[0]
+
+        total_width = width1 + width2 + width3
+
+        collage = Image.new("RGB", (total_width, total_height), "white")
+
+        collage.paste(image1, (0, 0))
+        collage.paste(image2, (width1, 0))
+        collage.paste(image3, (width1 + width2, 0))
+        collage.save("collage.jpg")
+
+    elif count(sizes, 1) == 2:
+        ver_height = min(sizes[1][1].size[1], sizes[2][1].size[1])
+        if sizes[1][1].size[1] > ver_height:
+            image1 = resize_to_height(sizes[1][1], ver_height)
+        else:
+            image1 = sizes[1][1]
+
+        if sizes[2][1].size[1] > ver_height:
+            image2 = resize_to_height(sizes[2][1], ver_height)
+        else:
+            image2 = sizes[2][1]
+
+        total_width = (image1.size[0] + image2.size[0])
+
+        if sizes[0][1].size[0] != total_width:
+            image3 = resize_to_width(sizes[0][1], total_width)
+        else:
+            image3 = sizes[0][1]
+
+        total_height = image1.size[1] + image3.size[1]
+
+        collage = Image.new("RGB", (total_width, total_height), "white")
+
+        collage.paste(image1, (0, 0))
+        collage.paste(image2, (image1.size[0], 0))
+        collage.paste(image3, (0, image1.size[1]))
+        collage.save("collage.jpg")
+
+    return 0
 
 
 bot.infinity_polling()
