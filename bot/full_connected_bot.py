@@ -527,6 +527,8 @@ def navigate_menu(call: types.CallbackQuery):
             collage(pictures)
 
             photo = open('collage.jpg', 'rb')
+            image = Image.open('collage.jpg')
+            text = text + f"\n Image size: {image.size}"
             media = types.InputMediaPhoto(photo, caption=text, parse_mode='Markdown')
 
             bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
@@ -591,7 +593,7 @@ def collage(pictures):
              (size_picture(width3, height3), image3)]
     sizes.sort(key=lambda x: x[0])
 
-    if count(sizes, 0) == 3 or count(sizes, 0) == 2:
+    if count(sizes, 0) == 3:
         total_width = min(width1, width2, width3)
         if total_width < width1:
             image1 = resize_to_width(image1, total_width)
@@ -661,7 +663,46 @@ def collage(pictures):
         collage.paste(image1, (0, 0))
         collage.paste(image2, (image1.size[0], 0))
         collage.paste(image3, (0, image1.size[1]))
+
         collage.save("collage.jpg")
+
+
+    elif count(sizes, 0) == 2:
+        ver_width = min(sizes[0][1].size[0], sizes[1][1].size[0])
+
+        if sizes[0][1].size[0] > ver_width:
+            image1 = resize_to_width(sizes[0][1], ver_width)
+        else:
+            image1 = sizes[0][1]
+        if sizes[1][1].size[0] > ver_width:
+            image2 = resize_to_width(sizes[1][1], ver_width)
+        else:
+            image2 = sizes[1][1]
+
+        total_height = image1.size[1] + image2.size[1]
+
+        if sizes[2][1].size[1] != total_height:
+            image3 = resize_to_height(sizes[2][1], total_height)
+        else:
+            image3 = sizes[2][1]
+
+        total_width = image1.size[0] + image3.size[0]
+
+        collage = Image.new("RGB", (total_width, total_height), "white")
+
+        collage.paste(image1, (0, 0))
+        collage.paste(image2, (0, image1.size[1]))
+        collage.paste(image3, (image1.size[0], 0))
+        collage.save("collage.jpg")
+
+    collage = Image.open("collage.jpg")
+
+    if collage.size[0] > 1024:
+        collage = resize_to_width(collage, 1024)
+    if collage.size[1] > 1024:
+        collage = resize_to_height(collage, 1024)
+
+    collage.save("collage.jpg")
 
     return 0
 
