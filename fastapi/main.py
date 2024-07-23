@@ -30,7 +30,6 @@ class Menu(BaseModel):
     menu: List[List[Recipe]]
 
 
-
 class ChatData(BaseModel):
     data: str
     chat_id: str
@@ -484,7 +483,6 @@ def get_preferences(chat_id: str):
 
 
 @app.post("/preferences", response_model=str)
-
 def send_preferences(data: ChatData):
     try:
         client = MongoClient(
