@@ -178,13 +178,8 @@ def get_menu(filters: FilterCreateMenu = FilterCreateMenu()):
         for i in range(3):
             recipe_for_bot = {
                 "id": menu[ind][i]["ID"],
-                # "name": str(find_names_of_products(string_to_list_int(i["Ingredients"]))) ,
-                "name": str(menu[ind][i]) + str(
-                    find_names_of_products(string_to_list_int(menu[ind][i]["Ingredients"]))),
-                # "name": menu[ind][i]["Name"] + "\n" + str(menu[ind][i]["recipeCalories"]),
-                # "name": menu[ind][i]["Name"],
+                "name": str(menu[ind][i]["Name"]),
                 "link_to_recipe": menu[ind][i]["URL"],
-                # "link_to_recipe": menu[ind][i]["Picture URL"],
                 "link_to_image": menu[ind][i]["Picture URL"],
                 "time": menu[ind][i]["Cooking time in minutes"],
                 "calories": menu[ind][i]["Calories"],
@@ -215,6 +210,12 @@ def get_menu(filters: FilterCreateMenu = FilterCreateMenu()):
 @app.post("/recreate", response_model=Menu)
 def recreate_and_get_menu(filters: FilterRecreateMenu):
     menu = filters.menu["menu"]
+
+    def get_list_by_keys(item, keys):
+        a = []
+        for key in keys:
+            a.append(item[key])
+        return a
 
     def get_list_of_products(recipes: list):
         list_of_products = {}
@@ -313,19 +314,52 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
         "Spicy": {"$lte": filters.spicy}
     }
     recipes = list(db['recipes'].find(filter_for_query))
-    recipes = list(filter(
-        lambda x: all([(i in list_of_products) for i in find_names_of_products(string_to_list_int(x["Ingredients"]))]),
-        recipes))
 
     for recipe in recipes:
         recipe["recipeCalories"] = sum(string_to_list_float(recipe["Weights"])) / 100 * recipe["Calories"] / recipe[
             "Servings"]
+        cn = 0
+        for prod in find_names_of_products(string_to_list_int(recipe["Ingredients"])):
+            if prod in list_of_products:
+                cn += 1
+        recipe["pr_pop"] = cn / len(list_of_products)
+
+    for recips in menu:
+        for recipe in recips:
+            if recipe:
+                recipe["recipeCalories"] = sum(string_to_list_float(recipe["Weights"])) / 100 * recipe["Calories"] / recipe[
+                    "Servings"]
 
     z = 0.25 * filters.calories
     o = 0.4 * filters.calories
     u = 0.35 * filters.calories
-    recipes_z = sorted(list(filter(lambda x: x["Breakfast"] == 1, recipes)), key=lambda x: abs(z - x["recipeCalories"]))
-    recipes_o = sorted(list(filter(lambda x: x["Breakfast"] == 0, recipes)), key=lambda x: abs(o - x["recipeCalories"]))
+
+    breakfast_main = list(filter(lambda x: x["Breakfast"] == 1 and get_list_by_keys(x,
+    ["Dessert", "Pastry", "Salad", "Snack"]).count(1) > 0, recipes))
+    breakfast_main.sort(key=lambda x: (1 - x["pr_pop"]) * 1000000 + abs(z - x["recipeCalories"]))
+    breakfast_main = breakfast_main[:1]
+    lunch_main = list(filter(lambda x: x["Breakfast"] == 0 and get_list_by_keys(x,
+    ["Lunch", "Dinner", "Soup", "Second course"]).count(1) > 0, recipes))
+    lunch_main.sort(key=lambda x: (1 - x["pr_pop"]) * 1000000 + abs(o - x["recipeCalories"]))
+    lunch_main = lunch_main[:1]
+    dinner_main = list(filter(lambda x: x["Breakfast"] == 0 and get_list_by_keys(x,
+    ["Dessert", "Pastry", "Salad", "Snack"]).count(1) > 0, recipes))
+    dinner_main.sort(key=lambda x: (1 - x["pr_pop"]) * 1000000 + abs(u - x["recipeCalories"]))
+    dinner_main = dinner_main[:1]
+
+    recipes = list(filter(
+        lambda x: all([(i in list_of_products) for i in find_names_of_products(string_to_list_int(x["Ingredients"]))]),
+        recipes))
+
+    breakfast = list(filter(lambda x: x["Breakfast"] == 1 and get_list_by_keys(x,
+    ["Dessert", "Pastry", "Salad", "Snack"]).count(1) > 0, recipes))
+    lunch = list(filter(lambda x: x["Breakfast"] == 0 and get_list_by_keys(x,
+    ["Lunch", "Dinner", "Soup", "Second course"]).count(1) > 0, recipes))
+    dinner = list(filter(lambda x: x["Breakfast"] == 0 and get_list_by_keys(x,
+    ["Dessert", "Pastry", "Salad", "Snack"]).count(1) > 0, recipes))
+
+    recipes_z = sorted(breakfast, key=lambda x: abs(z - x["recipeCalories"]))
+    recipes_o = sorted(lunch, key=lambda x: abs(o - x["recipeCalories"]))
 
     cn_z = 0
     cn_o = 0
@@ -343,9 +377,11 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
     if len(recipes_delta50) >= cn_z:
         pool = random.sample(recipes_delta50, cn_z)
     else:
+        recipes_z += breakfast_main
+        cn_z = min(cn_z, len(recipes_z))
         pool = random.sample(recipes_z[:cn_z], cn_z)
     for i in range(7):
-        if not menu[i][0]:
+        if not menu[i][0] and cn_z >= 1:
             menu[i][0] = pool[cn_z - 1]
             cn_z -= 1
 
@@ -353,24 +389,74 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
     if len(recipes_delta50) >= cn_o:
         pool = random.sample(recipes_delta50, cn_o)
     else:
+        cn_o = min(cn_o, len(recipes_o))
+        recipes_o += lunch_main
         pool = random.sample(recipes_o[:cn_o], cn_o)
     for i in range(7):
-        if not menu[i][1]:
+        if not menu[i][1] and cn_o >= 1:
             menu[i][1] = pool[cn_o - 1]
             recipes_o.remove(pool[cn_o - 1])
             cn_o -= 1
 
-    recipes_u = sorted(recipes_o, key=lambda x: abs(u - x["recipeCalories"]))
+    recipes_u = sorted(recipes_o + dinner, key=lambda x: abs(u - x["recipeCalories"]))
 
     recipes_delta50 = list(filter(lambda x: abs(u - x["recipeCalories"]) <= 50, recipes_u))
     if len(recipes_delta50) >= cn_u:
         pool = random.sample(recipes_delta50, cn_u)
     else:
+        recipes_u += dinner_main
+        cn_u = min(cn_u, len(recipes_u))
         pool = random.sample(recipes_u[:cn_u], cn_u)
     for i in range(7):
-        if not menu[i][2]:
+        if not menu[i][2] and cn_u >= 1:
             menu[i][2] = pool[cn_u - 1]
             cn_u -= 1
+
+    a = [[0] * 3 for i in range(7)]
+    for i in range(7):
+        for j in range(3):
+            if menu[i][j]:
+                a[i][j] = 1
+
+    a_start = a
+    flag_bad_menu = False
+    if not menu[0][0]:
+        for i in range(6, 0, -1):
+            if menu[i][0]:
+                menu[0][0], menu[i][0] = menu[i][0], menu[0][0]
+                break
+        else:
+            flag_bad_menu = True
+
+    if not menu[0][1]:
+        for i in range(6, 0, -1):
+            if menu[i][1]:
+                menu[0][1], menu[i][1] = menu[i][1], menu[0][1]
+                break
+        else:
+            flag_bad_menu = True
+
+    if not menu[0][2]:
+        for i in range(6, 0, -1):
+            if menu[i][2]:
+                menu[0][2], menu[i][2] = menu[i][2], menu[0][2]
+                break
+        else:
+            flag_bad_menu = True
+
+    if flag_bad_menu:
+        # break
+        a = [[0] * 3 for i in range(7)]
+        for i in range(7):
+            for j in range(3):
+                if menu[i][j]:
+                    a[i][j] = 1
+        raise Exception(a, a_start)
+
+    for i in range(1, 7):
+        for j in range(3):
+            if not menu[i][j]:
+                menu[i][j] = menu[i-1][j]
 
     for ind in range(7):
         for i in range(3):
@@ -381,7 +467,7 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
                     "link_to_recipe": menu[ind][i]["URL"],
                     "link_to_image": menu[ind][i]["Picture URL"],
                     "time": menu[ind][i]["Cooking time in minutes"],
-                    "calories": menu[ind][i]["Calories"],
+                    "calories": menu[ind][i]["recipeCalories"],
                     "pfc": [menu[ind][i]["Protein"], menu[ind][i]["Fat"], menu[ind][i]["Carbs"]]
                 }
     response["menu"] = menu
@@ -499,14 +585,3 @@ def send_preferences(data: ChatData):
             return "Update failed"
     except Exception as e:
         raise "FAILED"
-
-
-
-# {'_id': ObjectId('66852e3e82d561d774654c7d'), 'ID': 191, 'Name':
-# 'Быстрые маринованные вешенки', 'Breakfast': 0, 'Cooking time in minutes': 160,
-# 'Cooking time': '2 часа 40 минут', 'Serving type': 'Порции', 'Servings': 3,
-# 'Calories': 37.62, 'Protein': 0.66, 'Fat': 2.38, 'Carbs': 3.59, 'Difficulty': 2,
-# 'Spicy': 2, 'Ingredients': '[ 62  54 408 390 337 314 488 205 485 180]',
-# 'Types': "['г', 'г', 'г', 'г', 'г', 'г', 'г', 'г', 'г', 'по желанию']",
-# 'Weights': '[1000.0, 350.0, 30.0, 30.0, 25.0, 34.0, 10.0, 1.0, 3.0, 0]',
-# 'URL': 'https://food.ru/recipes/190204'
