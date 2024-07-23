@@ -100,8 +100,11 @@ def get_menu(filters: FilterCreateMenu = FilterCreateMenu()):
             ans[i] = ingredients[id]
         return ans
 
-    def find_ids_of_products(products_names: List[str]):
-        return list(i['ID'] for i in db['ingredients'].find({"Ingredients": {"$in": products_names}}))
+    def get_list_by_keys(item, keys):
+        a = []
+        for key in keys:
+            a.append(item[key])
+        return a
 
     client = MongoClient(f'mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}?authSource=admin')
     db = client['findrecipe']
@@ -134,8 +137,18 @@ def get_menu(filters: FilterCreateMenu = FilterCreateMenu()):
     o = 0.4 * filters.calories
     u = 0.35 * filters.calories
 
-    recipes_z = sorted(list(filter(lambda x: x["Breakfast"] == 1, recipes)), key=lambda x: abs(z - x["recipeCalories"]))
-    recipes_o = sorted(list(filter(lambda x: x["Breakfast"] == 0, recipes)), key=lambda x: abs(o - x["recipeCalories"]))
+    breakfast = list(filter(lambda x: x["Breakfast"] == 1 and get_list_by_keys(x,
+                                                                               ["Dessert", "Pastry", "Salad",
+                                                                                "Snack"]).count(1) > 0, recipes))
+    lunch = list(filter(lambda x: x["Breakfast"] == 0 and get_list_by_keys(x,
+                                                                           ["Lunch", "Dinner", "Soup",
+                                                                            "Second course"]).count(1) > 0, recipes))
+    dinner = list(filter(lambda x: x["Breakfast"] == 0 and get_list_by_keys(x,
+                                                                            ["Dessert", "Pastry", "Salad",
+                                                                             "Snack"]).count(1) > 0, recipes))
+
+    recipes_z = sorted(breakfast, key=lambda x: abs(z - x["recipeCalories"]))
+    recipes_o = sorted(lunch, key=lambda x: abs(o - x["recipeCalories"]))
 
     menu = [[None, None, None] for _ in range(7)]
 

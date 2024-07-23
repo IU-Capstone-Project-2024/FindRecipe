@@ -32,8 +32,8 @@ def set_initial_preferences(message):
         "pfc": [],
         "time": 120,
         "diff": 5,
-        "spicy": 2,
-        "num_products": 15
+        "spicy": 5,
+        "num_products": 25
     }
 
     chat_id = message.chat.id
@@ -78,10 +78,18 @@ def start_generating(message):
 
 def choose_param(message, option=None):
     pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': message.chat.id})
-    if 'not found' in json.loads(pref_request.content):
+    while 'not found' in json.loads(pref_request.content.decode('ascii')):
         set_initial_preferences(message)
-
-    txt = 'Выбери параметр, чтобы изменить его'
+        pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': message.chat.id})
+    data = json.loads(json.loads(pref_request.content.decode('ascii')))
+    txt = f"""
+Выбери параметр, чтобы изменить его
+⚖️ калорийность - {data["calories"]}
+⏰ время готовки - {data["time"]}
+🌶 острота - {data["spicy"]}
+📊 сложноть - {data["diff"]}
+🛒 количество продуктов - {data["num_products"]}
+"""
     markup = InlineKeyboardMarkup()
     calories = InlineKeyboardButton('⚖️ калорийность', callback_data='calories')
     time = InlineKeyboardButton('⏰ время готовки', callback_data='time')
@@ -135,13 +143,29 @@ def modify_calories(call: types.CallbackQuery):
     bot.delete_message(chat_id=call.message.chat.id,
                        message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
-                     text='Введи калорийность в ккал')
+                     text='Введи калорийность в ккал. (1300-2500)')
     bot.register_next_step_handler(call.message,
+                                   process_calories_input)
+
+
+def modify_calories_2(message):
+    bot.delete_message(chat_id=message.chat.id,
+                       message_id=message.id)
+    bot.send_message(chat_id=message.chat.id,
+                     text='Введи калорийность в ккал. (1300-2500)')
+    bot.register_next_step_handler(message,
                                    process_calories_input)
 
 
 def process_calories_input(message):
     calories = message.text
+    try:
+        if not 1300 <= int(calories) <= 2500:
+            modify_calories_2(message)
+            return
+    except Exception:
+        modify_calories_2(message)
+        return
 
     chat_id = message.chat.id
 
@@ -165,12 +189,27 @@ def modify_time(call: types.CallbackQuery):
     bot.delete_message(chat_id=call.message.chat.id,
                        message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
-                     text='Введи время готовки в минутах')
+                     text='Введи время готовки в минутах. (10-300 минут. Ввод просто число)')
     bot.register_next_step_handler(call.message, process_time_input)
+
+
+def modify_time_2(message):
+    bot.delete_message(chat_id=message.chat.id,
+                       message_id=message.id)
+    bot.send_message(chat_id=message.chat.id,
+                     text='Введи время готовки в минутах. (10-300 минут. Ввод просто число)')
+    bot.register_next_step_handler(message, process_time_input)
 
 
 def process_time_input(message):
     time = message.text
+    try:
+        if not 10 <= int(time) <= 300:
+            modify_time_2(message)
+            return
+    except Exception:
+        modify_time_2(message)
+        return
 
     chat_id = message.chat.id
 
@@ -193,12 +232,28 @@ def modify_spicy(call: types.CallbackQuery):
     bot.delete_message(chat_id=call.message.chat.id,
                        message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
-                     text='Введи число - степень остроты от 1 до 5')
+                     text='Введи число - степень максимальной остроты от 1 до 5')
     bot.register_next_step_handler(call.message, process_spicy_input)
+
+
+def modify_spicy_2(message):
+    bot.delete_message(chat_id=message.chat.id,
+                       message_id=message.id)
+    bot.send_message(chat_id=message.chat.id,
+                     text='Введи число - степень максимальной остроты от 1 до 5')
+    bot.register_next_step_handler(message, process_spicy_input)
 
 
 def process_spicy_input(message):
     spicy = message.text
+    try:
+        if not 1 <= int(spicy) <= 5:
+            modify_spicy_2(message)
+            return
+    except Exception:
+        modify_spicy_2(message)
+        return
+
     chat_id = message.chat.id
 
     pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
@@ -224,8 +279,23 @@ def modify_complexity(call: types.CallbackQuery):
     bot.register_next_step_handler(call.message, process_complexity_input)
 
 
+def modify_complexity_2(message):
+    bot.delete_message(chat_id=message.chat.id,
+                       message_id=message.id)
+    bot.send_message(chat_id=message.chat.id,
+                     text='Введи число - сложность блюда от 1 до 5')
+    bot.register_next_step_handler(message, process_complexity_input)
+
+
 def process_complexity_input(message):
     complexity = message.text
+    try:
+        if not 1 <= int(complexity) <= 5:
+            modify_complexity_2(message)
+            return
+    except Exception:
+        modify_complexity_2(message)
+        return
 
     chat_id = message.chat.id
 
@@ -444,7 +514,7 @@ def shconfirm_handler(call: CallbackQuery):
     selected_products = [product for product, status in product_status[call.from_user.id].items() if status]
     if selected_products:
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("Вернуться к меню", callback_data="next_-1"))
+        markup.add(InlineKeyboardButton("Вернуться к меню", callback_data="back"))
         response = requests.get(f"{FASTAPI_URL}/chs", params={"chat_id": str(call.from_user.id)})
         if response.text[1] == "[":
             cur_list = read_list(response.text)
@@ -700,7 +770,6 @@ def navigate_menu(call: types.CallbackQuery):
 
             photo = open('collage.jpg', 'rb')
             image = Image.open('collage.jpg')
-            text = text + f"\n Image size: {image.size}"
             media = types.InputMediaPhoto(photo, caption=text, parse_mode='Markdown')
 
             bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
