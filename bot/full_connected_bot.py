@@ -9,26 +9,30 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMedia
 from io import BytesIO
 import urllib
 from PIL import Image
+import re
+import ast
 
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 
 bot = telebot.TeleBot(TOKEN)
 FASTAPI_URL = os.getenv('FASTAPI')
-
+product_status = dict()
+products = dict()
 MIN_DIMENSION = 320
 #### Aliye
 
 user_data = dict()
 
+
 def set_initial_preferences(message):
     user_preferences = {
-        "bad_products": [], 
+        "bad_products": [],
         "calories": 2000,
         "pfc": [],
         "time": 120,
-        "diff": 5, 
-        "spicy": 2, 
+        "diff": 5,
+        "spicy": 2,
         "num_products": 15
     }
 
@@ -36,9 +40,9 @@ def set_initial_preferences(message):
     user_preferences_json = json.dumps(user_preferences, ensure_ascii=False)
     # raise Exception(user_preferences_json)
 
-    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
+    user_request = requests.post(f"{FASTAPI_URL}/preferences",
+                                 json={"data": user_preferences_json, 'chat_id': str(chat_id)})
     user_request.raise_for_status()
-
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -96,7 +100,7 @@ def choose_param(message, option=None):
     if option:
         media = types.InputMediaPhoto(photo, caption=txt)
         bot.edit_message_media(media=media, chat_id=message.chat.id, message_id=message.message_id,
-                              reply_markup=markup)
+                               reply_markup=markup)
     else:
         bot.send_photo(message.chat.id, photo=photo, caption=txt, parse_mode='html', reply_markup=markup)
 
@@ -120,18 +124,19 @@ def process_products_input(message):
     user_preferences['num_products'] = products
     user_preferences_json = json.dumps(user_preferences)
 
-    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={'chat_id':str(chat_id), 'data': user_preferences_json})
+    user_request = requests.post(f"{FASTAPI_URL}/preferences",
+                                 json={'chat_id': str(chat_id), 'data': user_preferences_json})
     user_request.raise_for_status()
     choose_param(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "calories")
 def modify_calories(call: types.CallbackQuery):
-    bot.delete_message(chat_id=call.message.chat.id, 
+    bot.delete_message(chat_id=call.message.chat.id,
                        message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
                      text='Введи калорийность в ккал')
-    bot.register_next_step_handler(call.message, 
+    bot.register_next_step_handler(call.message,
                                    process_calories_input)
 
 
@@ -147,16 +152,17 @@ def process_calories_input(message):
     user_preferences['calories'] = calories
     user_preferences_json = json.dumps(user_preferences)
 
-    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
-    
-    user_request.raise_for_status()    
-    
+    user_request = requests.post(f"{FASTAPI_URL}/preferences",
+                                 json={"data": user_preferences_json, 'chat_id': str(chat_id)})
+
+    user_request.raise_for_status()
+
     choose_param(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "time")
 def modify_time(call: types.CallbackQuery):
-    bot.delete_message(chat_id=call.message.chat.id, 
+    bot.delete_message(chat_id=call.message.chat.id,
                        message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
                      text='Введи время готовки в минутах')
@@ -175,18 +181,19 @@ def process_time_input(message):
     user_preferences['time'] = time
     user_preferences_json = json.dumps(user_preferences)
 
-    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
-    user_request.raise_for_status()   
+    user_request = requests.post(f"{FASTAPI_URL}/preferences",
+                                 json={"data": user_preferences_json, 'chat_id': str(chat_id)})
+    user_request.raise_for_status()
 
     choose_param(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "spicy")
 def modify_spicy(call: types.CallbackQuery):
-    bot.delete_message(chat_id=call.message.chat.id, 
+    bot.delete_message(chat_id=call.message.chat.id,
                        message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
-                          text='Введи число - степень остроты от 1 до 5')
+                     text='Введи число - степень остроты от 1 до 5')
     bot.register_next_step_handler(call.message, process_spicy_input)
 
 
@@ -201,18 +208,19 @@ def process_spicy_input(message):
     user_preferences['spicy'] = spicy
     user_preferences_json = json.dumps(user_preferences)
 
-    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
-    user_request.raise_for_status()   
-    
+    user_request = requests.post(f"{FASTAPI_URL}/preferences",
+                                 json={"data": user_preferences_json, 'chat_id': str(chat_id)})
+    user_request.raise_for_status()
+
     choose_param(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "complexity")
 def modify_complexity(call: types.CallbackQuery):
-    bot.delete_message(chat_id=call.message.chat.id, 
+    bot.delete_message(chat_id=call.message.chat.id,
                        message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
-                          text='Введи число - сложность блюда от 1 до 5')
+                     text='Введи число - сложность блюда от 1 до 5')
     bot.register_next_step_handler(call.message, process_complexity_input)
 
 
@@ -228,15 +236,16 @@ def process_complexity_input(message):
     user_preferences['diff'] = complexity
     user_preferences_json = json.dumps(user_preferences)
 
-    user_request = requests.post(f"{FASTAPI_URL}/preferences", json={"data": user_preferences_json, 'chat_id': str(chat_id)})
-    user_request.raise_for_status()   
+    user_request = requests.post(f"{FASTAPI_URL}/preferences",
+                                 json={"data": user_preferences_json, 'chat_id': str(chat_id)})
+    user_request.raise_for_status()
 
     choose_param(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "blacklist")
 def modify_blacklist(call: types.CallbackQuery):
-    send_product_list(call.message)
+    send_product_list(call)
 
 
 ### Sofia
@@ -244,43 +253,101 @@ def modify_blacklist(call: types.CallbackQuery):
 blacklist = []
 
 
-def read_products(filename):
-    file = open(filename)
-    data = json.load(file)
-    products = [product[0] for product in data['list_of_products'].items()]
-    return products
+def return_edit(message):
+    txt = 'Выбери параметр, чтобы изменить его'
+    markup = types.InlineKeyboardMarkup()
+    calories = types.InlineKeyboardButton('калорийность', callback_data='calories')
+    time = types.InlineKeyboardButton('время готовки', callback_data='time')
+    products = types.InlineKeyboardButton('количество продуктов', callback_data='products')
+    spicy = types.InlineKeyboardButton('острота', callback_data='spicy')
+    complexity = types.InlineKeyboardButton('сложность', callback_data='complexity')
+    blacklist = types.InlineKeyboardButton('черный список', callback_data='blacklist')
+    generate = types.InlineKeyboardButton('составить меню', callback_data='generate')
+
+    # Organizing buttons into rows and individual placements
+    markup.add(generate)
+    markup.row(calories, time)
+    markup.row(spicy, complexity)
+    markup.add(products)
+    markup.add(blacklist)
+
+    # Editing the original message instead of sending a new one
+    bot.edit_message_text(chat_id=message.chat.id,
+                          message_id=message.message_id,
+                          text=txt,
+                          reply_markup=markup,
+                          parse_mode='html')
 
 
-def add_blacklist(products, filename):
-    file = open(filename)
-    data = json.load(file)
-    file.close()
-    if 'blacklist' not in data:
-        data['blacklist'] = {}
-    for elem in products:
-        data['blacklist'][elem] = None
-    with open(filename, 'w') as file:
-        json.dump(data, file)
+@bot.callback_query_handler(func=lambda call: call.data == "chs_")
+def modify_products(call: types.CallbackQuery):
+    choose_param(call.message, option=1)
 
 
-products = read_products("test.json")
-buttons_per_page = min(max(5, (len(products) + 2) // 3), 10)
-
-product_status = {product: False for product in products}
-
-
-def send_product_list(message, page=0):
-    markup = create_product_markup(page)
-    bot.send_message(message.chat.id, "Выберите продукты, чтобы добавить в черный список:", reply_markup=markup)
+@bot.callback_query_handler(func=lambda call: call.data == "back")
+def modify_times(call: types.CallbackQuery):
+    choose_param(call.message, option=1)
 
 
-def create_product_markup(page):
+def update_status(product, call):
+    global product_status
+    product_status[call.from_user.id][product] = not product_status[call.from_user.id][product]
+
+
+def create_status(prods, call):
+    global product_status
+    product_status[call.from_user.id] = {product: False for product in prods}
+
+
+def read_list(list_str):
+    list_str = list_str.strip("[]")
+    pattern = r"'([^']*)'"
+    return re.findall(pattern, list_str)
+
+
+def send_product_list(call: CallbackQuery, page=0):
+    try:
+        response = requests.get(f"{FASTAPI_URL}/chs", params={"chat_id": str(call.from_user.id)})
+        if response.text[1] != "[":
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("Назад", callback_data="chs_"))
+            photo = open('chs.jpg', 'rb')
+            media = types.InputMediaPhoto(photo, caption='Черный список пуст')
+            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                   reply_markup=markup)
+            return
+        else:
+            global products
+            products[call.from_user.id] = read_list(response.text)
+            global product_status
+            product_status[call.from_user.id] = {product: False for product in products[call.from_user.id]}
+            markup = create_product_markup(page, products[call.from_user.id], call)
+            photo = open('chs.jpg', 'rb')
+            media = types.InputMediaPhoto(photo, caption='Выберите продукты, чтобы удалить из списка:')
+            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                   reply_markup=markup)
+    except Exception as e:
+        bot.reply_to(call.message, f"Error: {str(e)}")
+
+
+def add_shopping_list(call: CallbackQuery, message, page=0):
+    global products
+    create_status(products[call.from_user.id], call)
+    markup = create_shopping_markup(page, products[call.from_user.id], call)
+    photo = open('chs.jpg', 'rb')
+    media = types.InputMediaPhoto(photo, caption="Выберите продукты, чтобы добавить в чс:")
+    bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+                           reply_markup=markup)
+
+
+def create_product_markup(page, products, call):
+    global product_status
+    buttons_per_page = min(max(5, (len(products) + 2) // 3), 10)
     markup = InlineKeyboardMarkup()
     start = page * buttons_per_page
     end = start + buttons_per_page
-
     for product in products[start:end]:
-        emoji = " 🔴" if product_status[product] else ""
+        emoji = " ✅" if product_status[call.from_user.id][product] else " 🔴"
         markup.add(InlineKeyboardButton(product + emoji, callback_data=f"product_{product}"))
 
     if len(products) > buttons_per_page:
@@ -291,43 +358,144 @@ def create_product_markup(page):
             pagination_buttons.append(InlineKeyboardButton("➡️", callback_data=f"page_{page + 1}"))
         markup.add(*pagination_buttons)
 
-    markup.add(InlineKeyboardButton("Добавить продукты в черный список", callback_data="confirm"))
+    markup.add(InlineKeyboardButton("Завершить редактирование черного списка", callback_data="confirm"))
+
+    return markup
+
+
+def create_shopping_markup(page, products, call):
+    global product_status
+    buttons_per_page = min(max(5, (len(products) + 2) // 3), 8)
+    markup = InlineKeyboardMarkup()
+    start = page * buttons_per_page
+    end = start + buttons_per_page
+    counter = start
+    for product in products[start:end]:
+        emoji = " 🔴" if product_status[call.from_user.id][product] else ""
+        markup.add(InlineKeyboardButton(product + emoji, callback_data=f"sh_{counter}"))
+        counter += 1
+
+    if len(products) > buttons_per_page:
+        pagination_buttons = []
+        if page > 0:
+            pagination_buttons.append(InlineKeyboardButton("⬅️", callback_data=f"shpage_{page - 1}"))
+        if end < len(products):
+            pagination_buttons.append(InlineKeyboardButton("➡️", callback_data=f"shpage_{page + 1}"))
+        markup.add(*pagination_buttons)
+
+    markup.add(InlineKeyboardButton("Добавить продукты в черный список", callback_data="shconfirm"))
 
     return markup
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("page_"))
 def page_handler(call: CallbackQuery):
+    global products
     page = int(call.data.split("_")[1])
-    markup = create_product_markup(page)
+    markup = create_product_markup(page, products[call.from_user.id], call)
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("shpage_"))
+def page_handler(call: CallbackQuery):
+    global products
+    page = int(call.data.split("_")[1])
+    markup = create_shopping_markup(page, products[call.from_user.id], call)
     bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm"))
 def confirm_handler(call: CallbackQuery):
-    selected_products = [product for product, status in product_status.items() if status]
+    global product_status
+    selected_products = [product for product, status in product_status[call.from_user.id].items() if status]
     if selected_products:
-        bot.edit_message_text(
-            f"Добавлены в черный список:\n" + "\n".join(selected_products),
-            call.message.chat.id,
-            call.message.message_id
-        )
-        add_blacklist(selected_products, "test.json")
+        selected_products = [product for product, status in product_status[call.from_user.id].items() if status]
+        not_selected_products = [product for product, status in product_status[call.from_user.id].items() if status]
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("Вернуться к редактированию меню", callback_data="back"))
+        response = requests.get(f"{FASTAPI_URL}/chs", params={"chat_id": str(call.from_user.id)})
+        if response.text[1] == "[":
+            cur_list = read_list(response.text)
+            set1 = set(cur_list)
+            set2 = set(selected_products)
+            selected_products = list(set1.symmetric_difference(set2))
+        try:
+            requests.post(f"{FASTAPI_URL}/chs",
+                          json={'chat_id': str(call.from_user.id), "data": str(selected_products)})
+        except:
+            # bot.reply_to(call.message.id, "err")
+            print("err")
+        photo = open('chs.jpg', 'rb')
+        media = types.InputMediaPhoto(photo, caption=f"Удалено из черного списка:\n" + "\n".join(not_selected_products))
+        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+                               reply_markup=markup)
     else:
-        bot.edit_message_text(
-            "Черный список не обновлен.",
-            call.message.chat.id,
-            call.message.message_id
-        )
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("Вернуться к редактированию меню", callback_data="back"))
+        photo = open('chs.jpg', 'rb')
+        media = types.InputMediaPhoto(photo, caption="Черный список не обновлен.")
+        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+                               reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("shconfirm"))
+def shconfirm_handler(call: CallbackQuery):
+    global product_status
+    selected_products = [product for product, status in product_status[call.from_user.id].items() if status]
+    if selected_products:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("Вернуться к меню", callback_data="next_-1"))
+        response = requests.get(f"{FASTAPI_URL}/chs", params={"chat_id": str(call.from_user.id)})
+        if response.text[1] == "[":
+            cur_list = read_list(response.text)
+            set1 = set(cur_list)
+            set2 = set(selected_products)
+            selected_products = list(set1.symmetric_difference(set2))
+        try:
+            response = requests.post(f"{FASTAPI_URL}/chs",
+                                     json={'chat_id': str(call.from_user.id), "data": str(selected_products)})
+        except:
+            print("err")
+        photo = open('chs.jpg', 'rb')
+        media = types.InputMediaPhoto(photo, caption=f"Добавлено в черный список:\n" + "\n".join(selected_products))
+        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+                               reply_markup=markup)
+
+    else:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("Вернуться к редактированию меню", callback_data="next_-1"))
+        photo = open('chs.jpg', 'rb')
+        media = types.InputMediaPhoto(photo, caption="Черный список не обновлен.")
+        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+                               reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("product"))
 def handle_product(call: CallbackQuery):
+    global products
     product = call.data.split("_", 1)[1]
-    product_status[product] = not product_status[product]
 
-    page = next((i for i, p in enumerate(products) if product in p)) // buttons_per_page
-    markup = create_product_markup(page)
+    update_status(product, call)
+    buttons_per_page = min(max(5, (len(products[call.from_user.id]) + 2) // 3), 10)
+    page = next((i for i, p in enumerate(products[call.from_user.id]) if product in p))
+    if page is None:
+        page = 0
+    else:
+        page = page // buttons_per_page
+    print(page)
+    markup = create_product_markup(page, products[call.from_user.id], call)
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("sh_"))
+def handle_sh_product(call: CallbackQuery):
+    global products
+    product_ind = int(call.data.split("_", 1)[1])
+    product = products[call.from_user.id][product_ind]
+    update_status(product, call)
+    buttons_per_page = min(max(5, (len(products[call.from_user.id]) + 2) // 3), 8)
+    page = product_ind // buttons_per_page
+    markup = create_shopping_markup(page, products[call.from_user.id], call)
     bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
 
 
@@ -376,7 +544,8 @@ def format_shop_list(shopping_list):
 
 
 def create_navigation_buttons(current_day, mess_id):
-    days = ['📝 Список покупок', '🥦 Понедельник', '🍎 Вторник', '🥕 Среда', '🥝 Четверг', '🥑 Пятница', '🍅 Суббота', '🍊 Воскресенье']
+    days = ['📝 Список покупок', '🥦 Понедельник', '🍎 Вторник', '🥕 Среда', '🥝 Четверг', '🥑 Пятница', '🍅 Суббота',
+            '🍊 Воскресенье']
     markup = InlineKeyboardMarkup()
 
     if current_day == -1:
@@ -425,6 +594,8 @@ def get_menu(call: types.CallbackQuery):
         response.raise_for_status()
         data = response.json()
         shopping_list = data['list_of_products']
+        global products
+        products[call.from_user.id] = [product for product, status in shopping_list.items()]
         current_day = -1  # if day is -1, then we show shopping list
         shopping_list_text = format_shop_list(shopping_list)
         menu = data['menu']
@@ -449,7 +620,8 @@ def get_menu(call: types.CallbackQuery):
         markup = create_navigation_buttons(current_day, mess_id)
         photo = open('list.JPG', 'rb')
         media = types.InputMediaPhoto(photo, caption=shopping_list_text, parse_mode='Markdown')
-        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
+        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+                               reply_markup=markup)
 
     except requests.exceptions.RequestException as e:
         bot.reply_to(call.message, f"Failed to retrieve menu: {e}")
@@ -477,7 +649,8 @@ def navigate_menu(call: types.CallbackQuery):
         elif 'next' in call.data and current_day < len(menu) - 1:
             current_day += 1
         elif 'list' in call.data:
-            send_product_list(call.message)
+            add_shopping_list(call, call.message)
+            return
         elif 'change-' in call.data:
             payload = get_user_data(call.message)
             if 'change-breakfast_' in call.data:
@@ -512,7 +685,6 @@ def navigate_menu(call: types.CallbackQuery):
             user_response = requests.post(f"{FASTAPI_URL}/user", json=user_payload)
             user_response.raise_for_status()
 
-
         pictures = None
         if current_day == -1:
             text = format_shop_list(shopping_list)
@@ -531,15 +703,17 @@ def navigate_menu(call: types.CallbackQuery):
             text = text + f"\n Image size: {image.size}"
             media = types.InputMediaPhoto(photo, caption=text, parse_mode='Markdown')
 
-            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
+            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                   reply_markup=markup)
         else:
             photo = open('list.JPG', 'rb')
             media = types.InputMediaPhoto(photo, caption=text, parse_mode='Markdown')
-            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
-
+            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                   reply_markup=markup)
 
     except requests.exceptions.RequestException as e:
         bot.reply_to(call.message, f"Failed to retrieve menu: {e}.")
+
 
 def download_image(url, save_as):
     try:
@@ -556,11 +730,13 @@ def resize_to_height(image, new_height):
     img = image.resize((int(new_width), new_height), Image.LANCZOS)
     return img
 
+
 def resize_to_width(image, new_width):
     width, height = image.size
     new_height = new_width * height / width
     img = image.resize((new_width, int(new_height)), Image.LANCZOS)
     return img
+
 
 def count(sizes, value):
     count = 0
@@ -575,6 +751,7 @@ def size_picture(width, height):
         return 0
     elif height > width or height == width:
         return 1
+
 
 def collage(pictures):
     download_image(pictures[0], 'image1.jpg')
@@ -665,7 +842,6 @@ def collage(pictures):
         collage.paste(image3, (0, image1.size[1]))
 
         collage.save("collage.jpg")
-
 
     elif count(sizes, 0) == 2:
         ver_width = min(sizes[0][1].size[0], sizes[1][1].size[0])
