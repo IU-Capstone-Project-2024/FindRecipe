@@ -8,7 +8,7 @@ from telebot import types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 from io import BytesIO
 import urllib
-from PIL import Image
+from PIL import Image, ImageFile
 import re
 import ast
 
@@ -38,7 +38,6 @@ def set_initial_preferences(message):
 
     chat_id = message.chat.id
     user_preferences_json = json.dumps(user_preferences, ensure_ascii=False)
-    # raise Exception(user_preferences_json)
 
     user_request = requests.post(f"{FASTAPI_URL}/preferences",
                                  json={"data": user_preferences_json, 'chat_id': str(chat_id)})
@@ -115,8 +114,8 @@ def choose_param(message, option=None):
 
 @bot.callback_query_handler(func=lambda call: call.data == "products")
 def modify_products(call: types.CallbackQuery):
-    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-    bot.send_message(chat_id=call.message.chat.id,
+    bot.delete_message(chat_id=call.from_user.id, message_id=call.message.id)
+    bot.send_message(chat_id=call.from_user.id,
                      text='Введите количество продуктов на неделю (10-35)')
     bot.register_next_step_handler(call.message, process_products_input)
 
@@ -156,9 +155,9 @@ def process_products_input(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == "calories")
 def modify_calories(call: types.CallbackQuery):
-    bot.delete_message(chat_id=call.message.chat.id,
+    bot.delete_message(chat_id=call.from_user.id,
                        message_id=call.message.id)
-    bot.send_message(chat_id=call.message.chat.id,
+    bot.send_message(chat_id=call.from_user.id,
                      text='Введи калорийность в ккал. (1300-2500)')
     bot.register_next_step_handler(call.message,
                                    process_calories_input)
@@ -202,9 +201,9 @@ def process_calories_input(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == "time")
 def modify_time(call: types.CallbackQuery):
-    bot.delete_message(chat_id=call.message.chat.id,
+    bot.delete_message(chat_id=call.from_user.id,
                        message_id=call.message.id)
-    bot.send_message(chat_id=call.message.chat.id,
+    bot.send_message(chat_id=call.from_user.id,
                      text='Введи время готовки в минутах. (10-300 минут. Ввод просто число)')
     bot.register_next_step_handler(call.message, process_time_input)
 
@@ -245,9 +244,9 @@ def process_time_input(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == "spicy")
 def modify_spicy(call: types.CallbackQuery):
-    bot.delete_message(chat_id=call.message.chat.id,
+    bot.delete_message(chat_id=call.from_user.id,
                        message_id=call.message.id)
-    bot.send_message(chat_id=call.message.chat.id,
+    bot.send_message(chat_id=call.from_user.id,
                      text='Введи число - степень максимальной остроты от 1 до 5')
     bot.register_next_step_handler(call.message, process_spicy_input)
 
@@ -288,9 +287,9 @@ def process_spicy_input(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == "complexity")
 def modify_complexity(call: types.CallbackQuery):
-    bot.delete_message(chat_id=call.message.chat.id,
+    bot.delete_message(chat_id=call.from_user.id,
                        message_id=call.message.id)
-    bot.send_message(chat_id=call.message.chat.id,
+    bot.send_message(chat_id=call.from_user.id,
                      text='Введи число - сложность блюда от 1 до 5')
     bot.register_next_step_handler(call.message, process_complexity_input)
 
@@ -399,7 +398,7 @@ def send_product_list(call: CallbackQuery, page=0):
             markup.add(types.InlineKeyboardButton("Назад", callback_data="chs_"))
             photo = open('chs.jpg', 'rb')
             media = types.InputMediaPhoto(photo, caption='Черный список пуст')
-            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+            bot.edit_message_media(media=media, chat_id=call.from_user.id, message_id=call.message.message_id,
                                    reply_markup=markup)
             return
         else:
@@ -410,7 +409,7 @@ def send_product_list(call: CallbackQuery, page=0):
             markup = create_product_markup(page, products[call.from_user.id], call)
             photo = open('chs.jpg', 'rb')
             media = types.InputMediaPhoto(photo, caption='Выберите продукты, чтобы удалить из списка:')
-            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+            bot.edit_message_media(media=media, chat_id=call.from_user.id, message_id=call.message.message_id,
                                    reply_markup=markup)
     except Exception as e:
         bot.reply_to(call.message, f"Error: {str(e)}")
@@ -422,7 +421,7 @@ def add_shopping_list(call: CallbackQuery, message, page=0):
     markup = create_shopping_markup(page, products[call.from_user.id], call)
     photo = open('chs.jpg', 'rb')
     media = types.InputMediaPhoto(photo, caption="Выберите продукты, чтобы добавить в чс:")
-    bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+    bot.edit_message_media(media=media, chat_id=call.from_user.id, message_id=call.message.message_id,
                            reply_markup=markup)
 
 
@@ -479,7 +478,7 @@ def page_handler(call: CallbackQuery):
     global products
     page = int(call.data.split("_")[1])
     markup = create_product_markup(page, products[call.from_user.id], call)
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
+    bot.edit_message_reply_markup(call.from_user.id, call.message.message_id, reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("shpage_"))
@@ -487,7 +486,7 @@ def page_handler(call: CallbackQuery):
     global products
     page = int(call.data.split("_")[1])
     markup = create_shopping_markup(page, products[call.from_user.id], call)
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
+    bot.edit_message_reply_markup(call.from_user.id, call.message.message_id, reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm"))
@@ -513,14 +512,14 @@ def confirm_handler(call: CallbackQuery):
             print("err")
         photo = open('chs.jpg', 'rb')
         media = types.InputMediaPhoto(photo, caption=f"Удалено из черного списка:\n" + "\n".join(not_selected_products))
-        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+        bot.edit_message_media(media=media, chat_id=call.from_user.id, message_id=call.message.message_id,
                                reply_markup=markup)
     else:
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("Вернуться к редактированию меню", callback_data="back"))
         photo = open('chs.jpg', 'rb')
         media = types.InputMediaPhoto(photo, caption="Черный список не обновлен.")
-        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+        bot.edit_message_media(media=media, chat_id=call.from_user.id, message_id=call.message.message_id,
                                reply_markup=markup)
 
 
@@ -544,7 +543,7 @@ def shconfirm_handler(call: CallbackQuery):
             print("err")
         photo = open('chs.jpg', 'rb')
         media = types.InputMediaPhoto(photo, caption=f"Добавлено в черный список:\n" + "\n".join(selected_products))
-        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+        bot.edit_message_media(media=media, chat_id=call.from_user.id, message_id=call.message.message_id,
                                reply_markup=markup)
 
     else:
@@ -552,7 +551,7 @@ def shconfirm_handler(call: CallbackQuery):
         markup.add(InlineKeyboardButton("Вернуться к редактированию меню", callback_data="next_-1"))
         photo = open('chs.jpg', 'rb')
         media = types.InputMediaPhoto(photo, caption="Черный список не обновлен.")
-        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+        bot.edit_message_media(media=media, chat_id=call.from_user.id, message_id=call.message.message_id,
                                reply_markup=markup)
 
 
@@ -570,7 +569,7 @@ def handle_product(call: CallbackQuery):
         page = page // buttons_per_page
     print(page)
     markup = create_product_markup(page, products[call.from_user.id], call)
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
+    bot.edit_message_reply_markup(call.from_user.id, call.message.message_id, reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("sh_"))
@@ -582,7 +581,7 @@ def handle_sh_product(call: CallbackQuery):
     buttons_per_page = min(max(5, (len(products[call.from_user.id]) + 2) // 3), 8)
     page = product_ind // buttons_per_page
     markup = create_shopping_markup(page, products[call.from_user.id], call)
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
+    bot.edit_message_reply_markup(call.from_user.id, call.message.message_id, reply_markup=markup)
 
 
 ### Ilsiia
@@ -592,9 +591,8 @@ def get_user_data(message):
 
     pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
     pref_request.raise_for_status()
-    # raise Exception([pref_request.content])
     user_preferences = json.loads(json.loads(pref_request.content))
-    user_preferences['bad_products'] = ['Картошка']
+    user_preferences['bad_products'] = []
     return user_preferences
 
 
@@ -676,6 +674,9 @@ def create_navigation_buttons(current_day, mess_id):
 def get_menu(call: types.CallbackQuery):
     try:
         payload = get_user_data(call.message)
+        response = requests.get(f"{FASTAPI_URL}/chs", params={"chat_id": str(call.from_user.id)})
+        if response.text[1] == "[":
+            payload["bad_products"] = read_list(response.text)
         response = requests.post(f"{FASTAPI_URL}/create", json=payload)
         response.raise_for_status()
         data = response.json()
@@ -686,7 +687,7 @@ def get_menu(call: types.CallbackQuery):
         shopping_list_text = format_shop_list(shopping_list)
         menu = data['menu']
 
-        chat_id = str(call.message.chat.id)
+        chat_id = str(call.from_user.id)
         mess_id = str(call.message.message_id)
         dt = {
             "menu": menu,
@@ -706,7 +707,7 @@ def get_menu(call: types.CallbackQuery):
         markup = create_navigation_buttons(current_day, mess_id)
         photo = open('list.JPG', 'rb')
         media = types.InputMediaPhoto(photo, caption=shopping_list_text, parse_mode='Markdown')
-        bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+        bot.edit_message_media(media=media, chat_id=call.from_user.id, message_id=call.message.message_id,
                                reply_markup=markup)
 
     except requests.exceptions.RequestException as e:
@@ -721,7 +722,7 @@ def navigate_menu(call: types.CallbackQuery):
             choose_param(call.message, option=1)
             return
 
-        chat_id = str(call.message.chat.id)
+        chat_id = str(call.from_user.id)
         mess_id = int(str(call.message.message_id))
 
         user_response = requests.get(f"{FASTAPI_URL}/user", params={"chat_id": chat_id, "mess_id": mess_id})
@@ -782,18 +783,18 @@ def navigate_menu(call: types.CallbackQuery):
         markup = create_navigation_buttons(current_day, mess_id)
 
         if pictures:
-            collage(pictures)
+            collage(pictures, call.from_user.id)
 
-            photo = open('collage.jpg', 'rb')
-            image = Image.open('collage.jpg')
+            photo = open(f"collage{call.from_user.id}.jpg", 'rb')
+            image = Image.open(f"collage{call.from_user.id}.jpg")
             media = types.InputMediaPhoto(photo, caption=text, parse_mode='Markdown')
 
-            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+            bot.edit_message_media(media=media, chat_id=call.from_user.id, message_id=call.message.message_id,
                                    reply_markup=markup)
         else:
             photo = open('list.JPG', 'rb')
             media = types.InputMediaPhoto(photo, caption=text, parse_mode='Markdown')
-            bot.edit_message_media(media=media, chat_id=call.message.chat.id, message_id=call.message.message_id,
+            bot.edit_message_media(media=media, chat_id=call.from_user.id, message_id=call.message.message_id,
                                    reply_markup=markup)
 
     except requests.exceptions.RequestException as e:
@@ -838,7 +839,7 @@ def size_picture(width, height):
         return 1
 
 
-def collage(pictures):
+def collage(pictures, id):
     download_image(pictures[0], 'image1.jpg')
     download_image(pictures[1], 'image2.jpg')
     download_image(pictures[2], 'image3.jpg')
@@ -875,7 +876,7 @@ def collage(pictures):
         collage.paste(image1, (0, 0))
         collage.paste(image2, (0, height1))
         collage.paste(image3, (0, height1 + height2))
-        collage.save("collage.jpg")
+        collage.save(f"collage{id}.jpg")
 
     elif count(sizes, 1) == 3:
         total_height = min(height1, height2, height3)
@@ -897,7 +898,7 @@ def collage(pictures):
         collage.paste(image1, (0, 0))
         collage.paste(image2, (width1, 0))
         collage.paste(image3, (width1 + width2, 0))
-        collage.save("collage.jpg")
+        collage.save(f"collage{id}.jpg")
 
     elif count(sizes, 1) == 2:
         ver_height = min(sizes[1][1].size[1], sizes[2][1].size[1])
@@ -926,7 +927,7 @@ def collage(pictures):
         collage.paste(image2, (image1.size[0], 0))
         collage.paste(image3, (0, image1.size[1]))
 
-        collage.save("collage.jpg")
+        collage.save(f"collage{id}.jpg")
 
     elif count(sizes, 0) == 2:
         ver_width = min(sizes[0][1].size[0], sizes[1][1].size[0])
@@ -954,16 +955,16 @@ def collage(pictures):
         collage.paste(image1, (0, 0))
         collage.paste(image2, (0, image1.size[1]))
         collage.paste(image3, (image1.size[0], 0))
-        collage.save("collage.jpg")
+        collage.save(f"collage{id}.jpg")
 
-    collage = Image.open("collage.jpg")
+    collage = Image.open(f"collage{id}.jpg")
 
     if collage.size[0] > 1024:
         collage = resize_to_width(collage, 1024)
     if collage.size[1] > 1024:
         collage = resize_to_height(collage, 1024)
 
-    collage.save("collage.jpg")
+    collage.save(f"collage{id}.jpg")
 
     return 0
 

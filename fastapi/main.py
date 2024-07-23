@@ -390,7 +390,8 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
     if len(recipes_delta50) >= cn_z:
         pool = random.sample(recipes_delta50, cn_z)
     else:
-        recipes_z += breakfast_main
+        if len(recipes_z) == 0:
+            recipes_z = breakfast_main
         cn_z = min(cn_z, len(recipes_z))
         pool = random.sample(recipes_z[:cn_z], cn_z)
     for i in range(7):
@@ -402,7 +403,8 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
     if len(recipes_delta50) >= cn_o:
         pool = random.sample(recipes_delta50, cn_o)
     else:
-        recipes_o += lunch_main
+        if len(recipes_o) == 0:
+            recipes_o = lunch_main
         cn_o = min(cn_o, len(recipes_o))
         pool = random.sample(recipes_o[:cn_o], cn_o)
     for i in range(7):
@@ -417,7 +419,8 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
     if len(recipes_delta50) >= cn_u:
         pool = random.sample(recipes_delta50, cn_u)
     else:
-        recipes_u += dinner_main
+        if len(recipes_u) == 0:
+            recipes_u = dinner_main
         cn_u = min(cn_u, len(recipes_u))
         pool = random.sample(recipes_u[:cn_u], cn_u)
     for i in range(7):
