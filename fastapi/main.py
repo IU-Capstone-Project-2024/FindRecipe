@@ -402,8 +402,8 @@ def recreate_and_get_menu(filters: FilterRecreateMenu):
     if len(recipes_delta50) >= cn_o:
         pool = random.sample(recipes_delta50, cn_o)
     else:
-        cn_o = min(cn_o, len(recipes_o))
         recipes_o += lunch_main
+        cn_o = min(cn_o, len(recipes_o))
         pool = random.sample(recipes_o[:cn_o], cn_o)
     for i in range(7):
         if not menu[i][1] and cn_o >= 1:

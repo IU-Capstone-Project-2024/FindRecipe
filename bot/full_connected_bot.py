@@ -30,7 +30,7 @@ def set_initial_preferences(message):
         "bad_products": [],
         "calories": 2000,
         "pfc": [],
-        "time": 120,
+        "time": 300,
         "diff": 5,
         "spicy": 5,
         "num_products": 25
@@ -117,12 +117,28 @@ def choose_param(message, option=None):
 def modify_products(call: types.CallbackQuery):
     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
     bot.send_message(chat_id=call.message.chat.id,
-                     text='Введите количество продуктов на неделю')
+                     text='Введите количество продуктов на неделю (10-35)')
     bot.register_next_step_handler(call.message, process_products_input)
+
+
+def modify_products_2(message):
+    bot.delete_message(chat_id=message.chat.id, message_id=message.id)
+    bot.send_message(chat_id=message.chat.id,
+                     text='Введите количество продуктов на неделю (10-35)')
+    bot.register_next_step_handler(message, process_products_input)
 
 
 def process_products_input(message):
     products = message.text
+
+    try:
+        if not 10 <= int(products) <= 35:
+            modify_products_2(message)
+            return
+    except Exception:
+        modify_products_2(message)
+        return
+
     chat_id = message.chat.id
 
     pref_request = requests.get(f"{FASTAPI_URL}/preferences", params={'chat_id': chat_id})
